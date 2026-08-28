@@ -104,3 +104,27 @@ Akun bootstrap ditujukan untuk serah terima awal. Setelah menerima aplikasi:
 - Dari halaman login, masukkan email kerja lalu pilih **Lupa password?**.
 - Dari Admin → Karyawan → Edit, admin dapat mengirim tautan reset ke email akun.
 - Password baru diproses oleh Firebase Authentication dan tidak disimpan di Firestore.
+
+## 11. People Ops dan employee workspace
+
+1. Admin membuka **People Ops** untuk melihat struktur per departemen.
+2. Tab **Pengumuman** digunakan untuk menerbitkan informasi ke workspace employee.
+3. Tab **Dokumen** menyimpan tautan HTTPS SOP, kebijakan, atau formulir.
+4. Tab **Kinerja** menetapkan KPI/sasaran kepada employee. Employee memperbarui progres dari **Workspace**.
+5. Tab **Recruitment** memindahkan kandidat melalui tahap applied, screening, interview, offer, hired/onboarding, atau rejected.
+6. Tab **Audit** menampilkan jejak tindakan penting.
+
+## 12. Payroll terintegrasi
+
+1. Admin melengkapi tarif BPJS pekerja dan tarif efektif PPh 21 pada profil karyawan.
+2. Lembur dan reimbursement harus disetujui sebelum periode payroll dihitung.
+3. Saat membuat payroll, sistem mengambil gaji pokok, tunjangan, lembur, reimbursement, serta potongan configurable sebagai snapshot.
+4. Admin membuka **Review** untuk memeriksa breakdown setiap karyawan.
+5. Setelah benar, admin mempublikasikan seluruh slip. Employee melihat rincian penghasilan, BPJS, pajak, dan take-home pay.
+
+## 13. Approval berjenjang
+
+1. Admin mengatur jumlah approval 1–3 tingkat di **Konfigurasi**.
+2. Setiap tingkat harus diproses oleh admin yang berbeda.
+3. Saldo cuti baru berkurang setelah tingkat terakhir menyetujui.
+4. Penolakan pada tingkat mana pun langsung mengakhiri workflow dan menyimpan catatan keputusan.

@@ -74,6 +74,7 @@ export function StatusBadge({ status }: { status: string }) {
     submitted: "Diajukan",
     approved: "Disetujui",
     rejected: "Ditolak",
+    completed: "Selesai",
   };
   return <span className={`status status-${normalized}`}>{label[normalized] || status}</span>;
 }

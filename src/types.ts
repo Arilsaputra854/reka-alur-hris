@@ -18,6 +18,7 @@ export interface Employee {
   fullName: string;
   email: string;
   phone: string;
+  emergencyContact?: string;
   department: string;
   position: string;
   status: "active" | "inactive";
@@ -30,6 +31,9 @@ export interface Employee {
   faceEnrolled: boolean;
   annualLeaveQuota?: number;
   annualLeaveUsed?: number;
+  taxRate?: number;
+  bpjsHealthRate?: number;
+  bpjsEmploymentRate?: number;
   createdAt?: Timestamp;
 }
 
@@ -48,8 +52,15 @@ export interface EmployeeRequest {
   reason: string;
   status: "submitted" | "approved" | "rejected";
   decisionNote?: string;
+  attachmentPath?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   createdAt?: Timestamp;
   decidedAt?: Timestamp;
+  requiredApprovals?: number;
+  approvalStep?: number;
+  approverIds?: string[];
+  approvalHistory?: Array<{ approverId: string; approverName: string; decision: "approved" | "rejected"; note: string; at: string }>;
 }
 
 export interface AttendanceRecord {
@@ -109,6 +120,10 @@ export interface Payslip {
   allowance: number;
   attendanceAllowance: number;
   overtime: number;
+  reimbursement?: number;
+  bpjsHealth?: number;
+  bpjsEmployment?: number;
+  incomeTax?: number;
   deduction: number;
   gross: number;
   net: number;
@@ -139,4 +154,46 @@ export interface CompanySettings {
   faceVerification: boolean;
   geoTracking: boolean;
   payrollCutoffDay: number;
+  requestApprovalLevels?: number;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  audience: "all" | "employee" | "admin";
+  active: boolean;
+  createdAt?: Timestamp;
+}
+
+export interface HrDocument {
+  id: string;
+  title: string;
+  category: string;
+  url: string;
+  audience: "all" | "employee" | "admin";
+  active: boolean;
+  createdAt?: Timestamp;
+}
+
+export interface PerformanceGoal {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  progress: number;
+  status: "active" | "completed";
+  createdAt?: Timestamp;
+}
+
+export interface Candidate {
+  id: string;
+  fullName: string;
+  email: string;
+  position: string;
+  stage: "applied" | "screening" | "interview" | "offer" | "hired" | "rejected";
+  notes: string;
+  createdAt?: Timestamp;
 }

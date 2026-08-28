@@ -18,6 +18,14 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    match /requests/{userId}/{fileName} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow write: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('(image/.*|application/pdf)');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

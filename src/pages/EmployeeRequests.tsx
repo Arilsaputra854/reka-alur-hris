@@ -7,7 +7,7 @@ import { useLiveQuery } from "../data";
 import { db } from "../firebase";
 import { friendlyError, formatCurrency } from "../lib";
 import { MetricCard, PageHeader, SectionCard } from "../Shell";
-import type { Employee, EmployeeRequest, RequestCategory } from "../types";
+import type { CompanySettings, Employee, EmployeeRequest, RequestCategory } from "../types";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -25,6 +25,7 @@ const initialForm = {
   hours: "1",
   amount: "0",
   reason: "",
+  attachmentUrl: "",
 };
 
 export function EmployeeRequests() {
@@ -32,6 +33,7 @@ export function EmployeeRequests() {
   const requestQuery = useMemo(() => query(collection(db, "requests"), where("employeeId", "==", firebaseUser?.uid || "none")), [firebaseUser?.uid]);
   const { data: requests, loading } = useLiveQuery<EmployeeRequest>(requestQuery);
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [approvalLevels, setApprovalLevels] = useState(1);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +43,9 @@ export function EmployeeRequests() {
     if (!firebaseUser) return;
     void getDoc(doc(db, "employees", firebaseUser.uid)).then((snapshot) => {
       if (snapshot.exists()) setEmployee({ id: snapshot.id, ...snapshot.data() } as Employee);
+    });
+    void getDoc(doc(db, "settings", "company")).then((snapshot) => {
+      if (snapshot.exists()) setApprovalLevels(Math.min(3, Math.max(1, (snapshot.data() as CompanySettings).requestApprovalLevels || 1)));
     });
   }, [firebaseUser]);
 
@@ -62,6 +67,7 @@ export function EmployeeRequests() {
     setError("");
     try {
       if (form.category === "leave" && form.endDate < form.startDate) throw new Error("Tanggal selesai tidak boleh sebelum tanggal mulai.");
+      if (form.attachmentUrl && !/^https:\/\//i.test(form.attachmentUrl)) throw new Error("Tautan lampiran harus memakai HTTPS.");
       await addDoc(collection(db, "requests"), {
         employeeId: firebaseUser.uid,
         employeeName: profile?.displayName || employee?.fullName || "Karyawan",
@@ -73,6 +79,11 @@ export function EmployeeRequests() {
         amount: form.category === "reimbursement" ? Math.max(0, Math.round(Number(form.amount) || 0)) : 0,
         reason: form.reason.trim(),
         status: "submitted",
+        requiredApprovals: approvalLevels,
+        approvalStep: 0,
+        approverIds: [],
+        approvalHistory: [],
+        ...(form.attachmentUrl ? { attachmentUrl: form.attachmentUrl.trim(), attachmentName: "Lampiran pendukung" } : {}),
         createdAt: serverTimestamp(),
       });
       setOpen(false);
@@ -102,7 +113,7 @@ export function EmployeeRequests() {
         {loading ? <div className="table-loading">Memuat pengajuan…</div> : sorted.length ? <div className="request-list employee-request-list">{sorted.map((item) => (
           <article key={item.id}>
             <span><FilePlus2 size={18} /></span>
-            <div><strong>{requestLabels[item.category]} • {item.requestType}</strong><small>{item.startDate}{item.category === "leave" && item.endDate !== item.startDate ? ` – ${item.endDate}` : ""}{item.category === "overtime" ? ` • ${item.hours} jam` : ""}{item.category === "reimbursement" ? ` • ${formatCurrency(item.amount)}` : ""}</small><p>{item.reason}</p>{item.decisionNote && <em>Catatan HR: {item.decisionNote}</em>}</div>
+            <div><strong>{requestLabels[item.category]} • {item.requestType}</strong><small>{item.startDate}{item.category === "leave" && item.endDate !== item.startDate ? ` – ${item.endDate}` : ""}{item.category === "overtime" ? ` • ${item.hours} jam` : ""}{item.category === "reimbursement" ? ` • ${formatCurrency(item.amount)}` : ""}</small><p>{item.reason}</p>{item.attachmentUrl && <a className="attachment-link" href={item.attachmentUrl} target="_blank" rel="noreferrer">Lihat {item.attachmentName || "lampiran"}</a>}{item.decisionNote && <em>Catatan HR: {item.decisionNote}</em>}</div>
             <StatusBadge status={item.status} />
           </article>
         ))}</div> : <EmptyState icon={<FilePlus2 size={25} />} title="Belum ada pengajuan" description="Gunakan pintasan di atas untuk membuat pengajuan pertamamu." />}
@@ -119,6 +130,7 @@ export function EmployeeRequests() {
             {form.category === "reimbursement" && <FormField label="Nominal"><input type="number" min="1" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} required /></FormField>}
           </div>
           <FormField label="Alasan / keterangan"><textarea rows={4} minLength={10} value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} placeholder="Jelaskan kebutuhan pengajuan agar mudah ditinjau…" required /></FormField>
+          <FormField label="Tautan lampiran" hint="Opsional • gunakan tautan HTTPS Google Drive/Dropbox yang dapat diakses HR"><input type="url" value={form.attachmentUrl} onChange={(event) => setForm({ ...form, attachmentUrl: event.target.value })} placeholder="https://..." /></FormField>
           <FormMessage error={error} />
           <div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setOpen(false)}>Batal</button><SubmitButton loading={saving}>Kirim pengajuan</SubmitButton></div>
         </form>

@@ -3,6 +3,8 @@ import { NavLink, useLocation } from "react-router-dom";
 import { collection, query, where } from "firebase/firestore";
 import {
   Bell,
+  BookOpenCheck,
+  BriefcaseBusiness,
   CalendarDays,
   ChevronDown,
   CircleDollarSign,
@@ -21,9 +23,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { initials } from "./lib";
-import { useLiveQuery } from "./data";
+import { useLiveCollection, useLiveQuery } from "./data";
 import { db } from "./firebase";
-import type { EmployeeRequest } from "./types";
+import type { Announcement, EmployeeRequest } from "./types";
 
 type Icon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
@@ -32,6 +34,7 @@ const adminNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Karyawan", to: "/admin/karyawan", icon: Users },
   { label: "Kehadiran", to: "/admin/kehadiran", icon: Clock3 },
   { label: "Pengajuan", to: "/admin/pengajuan", icon: FileCheck2 },
+  { label: "People Ops", to: "/admin/people-ops", icon: BriefcaseBusiness },
   { label: "Geo tracking", to: "/admin/tracking", icon: MapPinned },
   { label: "Penggajian", to: "/admin/payroll", icon: CircleDollarSign },
   { label: "Konfigurasi", to: "/admin/konfigurasi", icon: Settings },
@@ -40,6 +43,7 @@ const adminNav: Array<{ label: string; to: string; icon: Icon }> = [
 const employeeNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Beranda", to: "/employee", icon: Gauge },
   { label: "Pengajuan", to: "/employee/pengajuan", icon: FileCheck2 },
+  { label: "Workspace", to: "/employee/workspace", icon: BookOpenCheck },
   { label: "Riwayat", to: "/employee/riwayat", icon: CalendarDays },
   { label: "Tracking", to: "/employee/tracking", icon: MapPinned },
   { label: "Slip gaji", to: "/employee/slip-gaji", icon: WalletCards },
@@ -51,22 +55,27 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
   const location = useLocation();
   const nav = type === "admin" ? adminNav : employeeNav;
   const notificationQuery = useMemo(() => type === "admin"
     ? query(collection(db, "requests"))
     : query(collection(db, "requests"), where("employeeId", "==", profile?.employeeId || profile?.id || "none")), [profile?.employeeId, profile?.id, type]);
   const { data: requestNotifications } = useLiveQuery<EmployeeRequest>(notificationQuery);
+  const { data: announcementNotifications } = useLiveCollection<Announcement>("announcements");
   const notifications = useMemo(() => [...requestNotifications]
     .filter((item) => type === "admin" ? item.status === "submitted" : true)
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
     .slice(0, 5), [requestNotifications, type]);
+  const announcements = useMemo(() => type === "employee" ? [...announcementNotifications].filter((item) => item.active && item.audience !== "admin").sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,3) : [], [announcementNotifications, type]);
+  const notificationCount = notifications.length + announcements.length;
 
   useEffect(() => {
     setMobileOpen(false);
     setProfileOpen(false);
     setNotificationOpen(false);
   }, [location.pathname]);
+  useEffect(() => { const sync = () => setOnline(navigator.onLine); window.addEventListener("online", sync); window.addEventListener("offline", sync); return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync); }; }, []);
 
   const sidebar = (
     <>
@@ -115,8 +124,8 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
           </div>
           <div className="topbar-actions">
             <div className="notification-wrap">
-              <button className="icon-button notification-button" aria-label="Notifikasi" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{notifications.length > 0 && <i />}</button>
-              {notificationOpen && <div className="notification-menu"><header><strong>Notifikasi</strong><span>{notifications.length} terbaru</span></header>{notifications.length ? <div>{notifications.map((item) => <NavLink key={item.id} to={type === "admin" ? "/admin/pengajuan" : "/employee/pengajuan"}><span className={`notification-state ${item.status}`}><FileCheck2 size={16} /></span><p><strong>{type === "admin" ? item.employeeName : item.requestType}</strong><small>{type === "admin" ? `${item.requestType} menunggu keputusan` : `Status: ${item.status === "submitted" ? "menunggu persetujuan" : item.status === "approved" ? "disetujui" : "ditolak"}`}</small></p></NavLink>)}</div> : <p className="notification-empty">Belum ada notifikasi baru.</p>}<NavLink className="notification-all" to={type === "admin" ? "/admin/pengajuan" : "/employee/pengajuan"}>Lihat semua pengajuan</NavLink></div>}
+              <button className="icon-button notification-button" aria-label="Notifikasi" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{notificationCount > 0 && <i />}</button>
+              {notificationOpen && <div className="notification-menu"><header><strong>Notifikasi</strong><span>{notificationCount} terbaru</span></header>{notificationCount ? <div>{announcements.map((item) => <NavLink key={`announcement-${item.id}`} to="/employee/workspace"><span className="notification-state approved"><Bell size={16}/></span><p><strong>{item.title}</strong><small>Pengumuman perusahaan</small></p></NavLink>)}{notifications.map((item) => <NavLink key={item.id} to={type === "admin" ? "/admin/pengajuan" : "/employee/pengajuan"}><span className={`notification-state ${item.status}`}><FileCheck2 size={16} /></span><p><strong>{type === "admin" ? item.employeeName : item.requestType}</strong><small>{type === "admin" ? `${item.requestType} menunggu keputusan` : `Status: ${item.status === "submitted" ? "menunggu persetujuan" : item.status === "approved" ? "disetujui" : "ditolak"}`}</small></p></NavLink>)}</div> : <p className="notification-empty">Belum ada notifikasi baru.</p>}<NavLink className="notification-all" to={type === "admin" ? "/admin/pengajuan" : "/employee/workspace"}>Buka pusat aktivitas</NavLink></div>}
             </div>
             <div className="profile-menu-wrap">
               <button className="profile-button" onClick={() => { setProfileOpen((value) => !value); setNotificationOpen(false); }}>
@@ -133,10 +142,11 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
             </div>
           </div>
         </header>
+        {!online && <div className="offline-banner">Kamu sedang offline. Perubahan akan tersedia kembali setelah koneksi pulih.</div>}
         <main className="page-content">{children}</main>
         {type === "employee" && (
           <nav className="bottom-nav" aria-label="Navigasi karyawan">
-            {employeeNav.slice(0, 5).map(({ label, to, icon: Icon }) => (
+            {employeeNav.filter((item) => ["/employee", "/employee/pengajuan", "/employee/workspace", "/employee/slip-gaji", "/employee/profil"].includes(item.to)).map(({ label, to, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === "/employee"} className={({ isActive }) => isActive ? "active" : ""}>
                 <Icon size={20} /><span>{label}</span>
               </NavLink>

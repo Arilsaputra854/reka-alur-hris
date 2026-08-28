@@ -5,7 +5,7 @@ Web/PWA HRIS untuk Reka Alur Teknologi dengan dua portal dalam satu deployment:
 - Admin: `/admin`
 - Employee: `/employee`
 
-Fitur utama: manajemen karyawan, attendance dengan geofence dan liveness demo, koreksi attendance, pengajuan cuti/lembur/reimbursement beserta approval dan saldo cuti, pusat notifikasi, geo tracking berbasis sesi, payroll, serta slip gaji employee.
+Fitur utama: manajemen karyawan dan struktur organisasi, attendance dengan geofence dan liveness demo, koreksi attendance, pengajuan cuti/lembur/reimbursement dengan approval berjenjang dan saldo cuti, pengumuman dan dokumen, KPI, recruitment/onboarding, pusat notifikasi, geo tracking berbasis sesi, payroll terintegrasi, serta slip gaji employee.
 
 ## Firebase project
 

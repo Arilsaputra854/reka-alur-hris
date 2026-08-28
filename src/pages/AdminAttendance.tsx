@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, Clock3, Download, MapPin, Search, ShieldAlert, X } from "lucide-react";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { PageHeader, SectionCard } from "../Shell";
 import { EmptyState, StatusBadge } from "../components";
 import { useLiveCollection } from "../data";
@@ -45,7 +45,35 @@ export function AdminAttendance() {
   }
 
   async function decide(correction: Correction, decision: "approved" | "rejected") {
-    await updateDoc(doc(db, "attendanceCorrections", correction.id), { status: decision, decidedAt: serverTimestamp() });
+    const correctionRef = doc(db, "attendanceCorrections", correction.id);
+    const attendanceRef = doc(db, "attendance", `correction-${correction.id}`);
+    const auditRef = doc(collection(db, "auditLogs"));
+    await runTransaction(db, async (transaction) => {
+      const current = await transaction.get(correctionRef);
+      if (!current.exists() || current.data().status !== "submitted") throw new Error("Koreksi ini sudah diproses.");
+      transaction.update(correctionRef, { status: decision, decidedAt: serverTimestamp() });
+      if (decision === "approved") {
+        transaction.set(attendanceRef, {
+          employeeId: correction.employeeId,
+          employeeName: correction.employeeName,
+          type: correction.type,
+          clientTimestamp: new Date(`${correction.date}T${correction.requestedTime}:00+07:00`).toISOString(),
+          dateKey: correction.date,
+          latitude: 0,
+          longitude: 0,
+          accuracy: 0,
+          distanceMeters: 0,
+          faceVerified: false,
+          faceScore: 0,
+          faceMode: "manual-correction",
+          status: "valid",
+          source: "approved-correction",
+          correctionId: correction.id,
+          createdAt: serverTimestamp(),
+        });
+      }
+      transaction.set(auditRef, { action: `attendance_correction.${decision}`, entityId: correction.id, summary: `Koreksi ${correction.employeeName} ${decision === "approved" ? "disetujui" : "ditolak"}`, createdAt: serverTimestamp() });
+    });
   }
 
   return (

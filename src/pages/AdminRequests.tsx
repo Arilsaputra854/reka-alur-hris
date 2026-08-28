@@ -7,10 +7,12 @@ import { db } from "../firebase";
 import { daysInclusive, formatCurrency, friendlyError, initials } from "../lib";
 import { MetricCard, PageHeader, SectionCard } from "../Shell";
 import type { Employee, EmployeeRequest, RequestCategory } from "../types";
+import { useAuth } from "../auth";
 
 const labels: Record<RequestCategory, string> = { leave: "Cuti / izin", overtime: "Lembur", reimbursement: "Reimbursement" };
 
 export function AdminRequests() {
+  const { firebaseUser, profile } = useAuth();
   const { data: requests, loading } = useLiveCollection<EmployeeRequest>("requests");
   const [queryText, setQueryText] = useState("");
   const [status, setStatus] = useState("submitted");
@@ -42,8 +44,16 @@ export function AdminRequests() {
         const requestRef = doc(db, "requests", selected.id);
         const currentRequest = await transaction.get(requestRef);
         if (!currentRequest.exists() || currentRequest.data().status !== "submitted") throw new Error("Pengajuan ini sudah diproses oleh admin lain.");
+        const currentData = currentRequest.data() as EmployeeRequest;
+        const approverIds = currentData.approverIds || [];
+        if (!firebaseUser || approverIds.includes(firebaseUser.uid)) throw new Error("Tingkat berikutnya harus disetujui oleh admin yang berbeda.");
+        const nextStep = (currentData.approvalStep || 0) + 1;
+        const requiredApprovals = currentData.requiredApprovals || 1;
+        const finalApproval = decision === "approved" && nextStep >= requiredApprovals;
+        const nextStatus = decision === "rejected" ? "rejected" : finalApproval ? "approved" : "submitted";
+        const approvalHistory = [...(currentData.approvalHistory || []), { approverId: firebaseUser.uid, approverName: profile?.displayName || "Admin", decision, note: note.trim(), at: new Date().toISOString() }];
 
-        if (decision === "approved" && selected.category === "leave") {
+        if (finalApproval && selected.category === "leave") {
           const employeeRef = doc(db, "employees", selected.employeeId);
           const employeeSnapshot = await transaction.get(employeeRef);
           if (!employeeSnapshot.exists()) throw new Error("Profil karyawan tidak ditemukan.");
@@ -55,11 +65,11 @@ export function AdminRequests() {
           transaction.update(employeeRef, { annualLeaveUsed: used + days, updatedAt: serverTimestamp() });
         }
 
-        transaction.update(requestRef, { status: decision, decisionNote: note.trim(), decidedAt: serverTimestamp() });
+        transaction.update(requestRef, { status: nextStatus, decisionNote: note.trim(), approvalStep: nextStep, approverIds: [...approverIds, firebaseUser.uid], approvalHistory, ...(nextStatus !== "submitted" ? { decidedAt: serverTimestamp() } : {}) });
         transaction.set(auditRef, {
-          action: `request.${decision}`,
+          action: nextStatus === "submitted" ? "request.approval_step" : `request.${nextStatus}`,
           entityId: selected.id,
-          summary: `${labels[selected.category]} ${selected.employeeName} ${decision === "approved" ? "disetujui" : "ditolak"}`,
+          summary: `${labels[selected.category]} ${selected.employeeName} ${nextStatus === "submitted" ? `lolos approval ${nextStep}/${requiredApprovals}` : nextStatus === "approved" ? "disetujui" : "ditolak"}`,
           createdAt: serverTimestamp(),
         });
       });
@@ -92,7 +102,7 @@ export function AdminRequests() {
           <article key={item.id}>
             <span className={`request-icon ${item.category}`}>{item.category === "leave" ? <CalendarDays size={19} /> : item.category === "overtime" ? <Clock3 size={19} /> : <ReceiptText size={19} />}</span>
             <div className="approval-person"><span className="avatar soft">{initials(item.employeeName)}</span><p><strong>{item.employeeName}</strong><small>{labels[item.category]} • {item.requestType}</small></p></div>
-            <div className="approval-detail"><strong>{item.startDate}{item.category === "leave" && item.endDate !== item.startDate ? ` – ${item.endDate}` : ""}</strong><small>{item.category === "overtime" ? `${item.hours} jam` : item.category === "reimbursement" ? formatCurrency(item.amount) : `${daysInclusive(item.startDate, item.endDate)} hari`}</small><p>{item.reason}</p></div>
+            <div className="approval-detail"><strong>{item.startDate}{item.category === "leave" && item.endDate !== item.startDate ? ` – ${item.endDate}` : ""}</strong><small>{item.category === "overtime" ? `${item.hours} jam` : item.category === "reimbursement" ? formatCurrency(item.amount) : `${daysInclusive(item.startDate, item.endDate)} hari`} • Approval {item.approvalStep || 0}/{item.requiredApprovals || 1}</small><p>{item.reason}</p>{item.attachmentUrl && <a className="attachment-link" href={item.attachmentUrl} target="_blank" rel="noreferrer">Buka {item.attachmentName || "lampiran"}</a>}</div>
             <StatusBadge status={item.status} />
             {item.status === "submitted" && <div className="approval-actions"><button className="icon-button reject" title="Tolak" onClick={() => openDecision(item, "rejected")}><X size={17} /></button><button className="icon-button approve" title="Setujui" onClick={() => openDecision(item, "approved")}><Check size={17} /></button></div>}
           </article>

@@ -29,8 +29,8 @@ beforeEach(async () => {
     await setDoc(doc(db, "employees", "employee-2"), { fullName: "Employee Two", status: "active" });
     await setDoc(doc(db, "payslips", "slip-1"), { employeeId: "employee-1", status: "published", net: 5_000_000 });
     await setDoc(doc(db, "payslips", "slip-2"), { employeeId: "employee-2", status: "published", net: 6_000_000 });
-    await setDoc(doc(db, "requests", "request-1"), { employeeId: "employee-1", employeeName: "Employee One", category: "leave", requestType: "Cuti tahunan", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Keperluan keluarga", status: "submitted", createdAt: Timestamp.now() });
-    await setDoc(doc(db, "requests", "request-2"), { employeeId: "employee-2", employeeName: "Employee Two", category: "overtime", requestType: "Lembur", startDate: "2026-09-01", endDate: "2026-09-01", hours: 2, amount: 0, reason: "Penyelesaian pekerjaan", status: "submitted", createdAt: Timestamp.now() });
+    await setDoc(doc(db, "requests", "request-1"), { employeeId: "employee-1", employeeName: "Employee One", category: "leave", requestType: "Cuti tahunan", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Keperluan keluarga", status: "submitted", requiredApprovals: 1, approvalStep: 0, approverIds: [], approvalHistory: [], createdAt: Timestamp.now() });
+    await setDoc(doc(db, "requests", "request-2"), { employeeId: "employee-2", employeeName: "Employee Two", category: "overtime", requestType: "Lembur", startDate: "2026-09-01", endDate: "2026-09-01", hours: 2, amount: 0, reason: "Penyelesaian pekerjaan", status: "submitted", requiredApprovals: 1, approvalStep: 0, approverIds: [], approvalHistory: [], createdAt: Timestamp.now() });
   });
 });
 
@@ -79,8 +79,8 @@ describe("Firestore authorization", () => {
     const db = env.authenticatedContext("employee-1").firestore();
     await assertSucceeds(getDocs(query(collection(db, "requests"), where("employeeId", "==", "employee-1"))));
     await assertFails(getDoc(doc(db, "requests", "request-2")));
-    await assertSucceeds(addDoc(collection(db, "requests"), { employeeId: "employee-1", employeeName: "Employee One", category: "reimbursement", requestType: "Transportasi", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 100000, reason: "Transportasi kunjungan klien", status: "submitted", createdAt: Timestamp.now() }));
-    await assertFails(addDoc(collection(db, "requests"), { employeeId: "employee-2", employeeName: "Employee Two", category: "leave", requestType: "Cuti", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Tidak boleh membuat milik orang lain", status: "submitted", createdAt: Timestamp.now() }));
+    await assertSucceeds(addDoc(collection(db, "requests"), { employeeId: "employee-1", employeeName: "Employee One", category: "reimbursement", requestType: "Transportasi", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 100000, reason: "Transportasi kunjungan klien", status: "submitted", requiredApprovals: 1, approvalStep: 0, approverIds: [], approvalHistory: [], createdAt: Timestamp.now() }));
+    await assertFails(addDoc(collection(db, "requests"), { employeeId: "employee-2", employeeName: "Employee Two", category: "leave", requestType: "Cuti", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Tidak boleh membuat milik orang lain", status: "submitted", requiredApprovals: 1, approvalStep: 0, approverIds: [], approvalHistory: [], createdAt: Timestamp.now() }));
   });
 
   it("allows admins to decide requests without rewriting business fields", async () => {

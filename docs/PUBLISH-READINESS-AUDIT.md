@@ -21,6 +21,13 @@ Produk belum boleh diposisikan sebagai mesin payroll atau biometrik production-g
 | Dashboard | Tanggal ditulis statis | Menggunakan tanggal Jakarta aktual dan CTA approval saat ada antrean |
 | Mobile UX | Modul baru belum ada di navigasi bawah | Bottom navigation diperluas menjadi lima aksi inti |
 | Rules | Belum ada kontrak akses request | Ditambah aturan owner-only untuk employee, admin-only decision, immutable business fields |
+| Koreksi attendance | Approval hanya mengubah label | Approval kini menghasilkan attendance turunan dan audit log tanpa mengubah event asli |
+| Payroll | Gaji pokok + tunjangan saja | Ditambah lembur/reimbursement approved, BPJS dan tarif PPh configurable, breakdown dan review sebelum publish |
+| Approval | Satu keputusan tanpa tahapan | Ditambah konfigurasi 1–3 tingkat dengan admin berbeda dan riwayat keputusan |
+| People operations | Belum tersedia | Ditambah struktur organisasi, pengumuman, dokumen, KPI/progress, recruitment dan onboarding pipeline |
+| Employee workspace | Informasi tersebar | Ditambah company hub, dokumen, sasaran, update progress, serta edit kontak mandiri |
+| Resilience | Tidak ada fallback UI global | Ditambah error boundary dan indikator offline |
+| App Check | Belum ada integrasi | Fondasi reCAPTCHA Enterprise aktif otomatis setelah site key dikonfigurasi |
 
 ## Benchmark produk
 
@@ -41,12 +48,10 @@ Produk belum boleh diposisikan sebagai mesin payroll atau biometrik production-g
 
 ### P1 product completeness
 
-1. Struktur organisasi dan multi-level approver.
-2. Kalender shift/cuti, hari libur, break, dan roster massal.
-3. Dokumen karyawan, kontrak, policy acknowledgement, dan tanda tangan.
-4. Announcement, inbox komunikasi, serta push/email notification.
-5. Performance/KPI/OKR, onboarding, recruitment, dan offboarding.
-6. Laporan analitik, pagination, import/export master data, dan audit viewer.
+1. Kalender shift/cuti, hari libur, break, dan roster massal.
+2. Tanda tangan elektronik dan policy acknowledgement tervalidasi.
+3. Push notification/email transaksional melalui backend.
+4. Laporan analitik, pagination, import/export master data, dan audit viewer.
 
 ## Prinsip UX yang dikunci
 
@@ -55,3 +60,11 @@ Produk belum boleh diposisikan sebagai mesin payroll atau biometrik production-g
 - Admin melihat pekerjaan yang membutuhkan tindakan sebelum laporan pasif.
 - Employee selalu dapat melihat status dan catatan keputusan tanpa bertanya ke HR.
 - Password, biometrik, dan data finansial tidak disimpan sebagai teks biasa di Firestore.
+
+## Blocker eksternal yang terverifikasi
+
+- Firebase Cloud Storage pada project baru memerlukan paket Blaze. Karena project saat ini belum memiliki bucket dan belum terhubung billing, lampiran menggunakan tautan HTTPS privat (misalnya Google Drive/Dropbox). Rules dan fondasi Storage sudah tersedia untuk diaktifkan setelah billing disetujui pemilik project.
+- Cloud Functions/Admin SDK untuk operasi privileged juga membutuhkan upgrade project dan deployment backend.
+- App Check memerlukan pembuatan reCAPTCHA Enterprise site key di console; frontend sudah membaca `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` bila tersedia.
+- Face matching production memerlukan vendor/model tervalidasi, consent, threshold, retensi, serta pengujian bias/false match. Mode sekarang tetap diberi label demo dan tidak mengaku sebagai biometrik production.
+- Browser web tidak dapat menjamin geo tracking setelah tab/aplikasi ditutup. Kebutuhan background kontinu memerlukan aplikasi native atau wrapper dengan izin background location.

@@ -16,6 +16,8 @@ import { EmployeePayslips } from "./pages/EmployeePayslips";
 import { EmployeeProfile } from "./pages/EmployeeProfile";
 import { AdminRequests } from "./pages/AdminRequests";
 import { EmployeeRequests } from "./pages/EmployeeRequests";
+import { AdminPeopleOps } from "./pages/AdminPeopleOps";
+import { EmployeeWorkspace } from "./pages/EmployeeWorkspace";
 import type { Role } from "./types";
 
 function Protected({ role, children }: { role: Role; children: React.ReactNode }) {
@@ -46,12 +48,14 @@ export default function App() {
       <Route path="/admin/karyawan" element={<AdminLayout><AdminEmployees /></AdminLayout>} />
       <Route path="/admin/kehadiran" element={<AdminLayout><AdminAttendance /></AdminLayout>} />
       <Route path="/admin/pengajuan" element={<AdminLayout><AdminRequests /></AdminLayout>} />
+      <Route path="/admin/people-ops" element={<AdminLayout><AdminPeopleOps /></AdminLayout>} />
       <Route path="/admin/tracking" element={<AdminLayout><AdminTracking /></AdminLayout>} />
       <Route path="/admin/payroll" element={<AdminLayout><AdminPayroll /></AdminLayout>} />
       <Route path="/admin/konfigurasi" element={<AdminLayout><AdminConfig /></AdminLayout>} />
       <Route path="/employee" element={<EmployeeLayout><EmployeeHome /></EmployeeLayout>} />
       <Route path="/employee/riwayat" element={<EmployeeLayout><EmployeeHistory /></EmployeeLayout>} />
       <Route path="/employee/pengajuan" element={<EmployeeLayout><EmployeeRequests /></EmployeeLayout>} />
+      <Route path="/employee/workspace" element={<EmployeeLayout><EmployeeWorkspace /></EmployeeLayout>} />
       <Route path="/employee/tracking" element={<EmployeeLayout><EmployeeTracking /></EmployeeLayout>} />
       <Route path="/employee/slip-gaji" element={<EmployeeLayout><EmployeePayslips /></EmployeeLayout>} />
       <Route path="/employee/profil" element={<EmployeeLayout><EmployeeProfile /></EmployeeLayout>} />

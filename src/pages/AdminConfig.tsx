@@ -16,6 +16,7 @@ const defaultSettings: CompanySettings = {
   faceVerification: true,
   geoTracking: true,
   payrollCutoffDay: 25,
+  requestApprovalLevels: 1,
 };
 
 export function AdminConfig() {
@@ -88,6 +89,7 @@ export function AdminConfig() {
               <FormField label="Zona waktu"><select value={settings.timezone} onChange={(event) => setSettings({ ...settings, timezone: event.target.value })}><option>Asia/Jakarta</option><option>Asia/Makassar</option><option>Asia/Jayapura</option></select></FormField>
               <FormField label="Alamat perusahaan"><textarea rows={3} value={settings.address} onChange={(event) => setSettings({ ...settings, address: event.target.value })} placeholder="Alamat kantor pusat" /></FormField>
               <FormField label="Tanggal cut-off payroll"><input type="number" min="1" max="28" value={settings.payrollCutoffDay} onChange={(event) => setSettings({ ...settings, payrollCutoffDay: Number(event.target.value) })} /></FormField>
+              <FormField label="Jumlah approval pengajuan"><select value={settings.requestApprovalLevels || 1} onChange={(event) => setSettings({ ...settings, requestApprovalLevels: Number(event.target.value) })}><option value="1">1 tingkat</option><option value="2">2 tingkat (admin berbeda)</option><option value="3">3 tingkat (admin berbeda)</option></select></FormField>
             </div>
           </SectionCard>
           <SectionCard title="Kebijakan verifikasi" description="Kontrol bukti yang diminta saat kehadiran.">

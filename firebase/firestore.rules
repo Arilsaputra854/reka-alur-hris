@@ -32,7 +32,9 @@ service cloud.firestore {
 
     match /employees/{employeeId} {
       allow read: if isAdmin() || owns(employeeId);
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (owns(employeeId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'emergencyContact', 'updatedAt']));
     }
 
     match /settings/{documentId} {
@@ -52,14 +54,14 @@ service cloud.firestore {
 
     match /attendance/{attendanceId} {
       allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
-      allow create: if isEmployee()
+      allow create: if isAdmin() || (isEmployee()
         && request.resource.data.employeeId == request.auth.uid
         && request.resource.data.type in ['check-in', 'check-out']
         && request.resource.data.keys().hasAll([
           'employeeId', 'employeeName', 'type', 'clientTimestamp',
           'dateKey', 'latitude', 'longitude', 'accuracy',
           'faceVerified', 'status', 'createdAt'
-        ]);
+        ]));
       allow update, delete: if false;
     }
 
@@ -81,12 +83,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll([
           'employeeId', 'employeeName', 'category', 'requestType',
           'startDate', 'endDate', 'hours', 'amount', 'reason',
-          'status', 'createdAt'
+          'status', 'createdAt', 'requiredApprovals', 'approvalStep',
+          'approverIds', 'approvalHistory'
         ])
         && request.resource.data.keys().hasOnly([
           'employeeId', 'employeeName', 'category', 'requestType',
           'startDate', 'endDate', 'hours', 'amount', 'reason',
-          'status', 'createdAt'
+          'status', 'createdAt', 'requiredApprovals', 'approvalStep',
+          'approverIds', 'approvalHistory', 'attachmentPath', 'attachmentUrl', 'attachmentName'
         ])
         && request.resource.data.employeeName is string
         && request.resource.data.requestType is string
@@ -94,14 +98,47 @@ service cloud.firestore {
         && request.resource.data.startDate is string
         && request.resource.data.endDate is string
         && request.resource.data.hours is number
-        && request.resource.data.amount is number;
+        && request.resource.data.amount is number
+        && request.resource.data.requiredApprovals is int
+        && request.resource.data.requiredApprovals >= 1
+        && request.resource.data.requiredApprovals <= 3
+        && request.resource.data.approvalStep == 0
+        && request.resource.data.approverIds.size() == 0
+        && request.resource.data.approvalHistory.size() == 0;
       allow update: if isAdmin()
         && resource.data.status == 'submitted'
         && request.resource.data.employeeId == resource.data.employeeId
         && request.resource.data.category == resource.data.category
-        && request.resource.data.status in ['approved', 'rejected']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decisionNote', 'decidedAt']);
+        && request.resource.data.status in ['submitted', 'approved', 'rejected']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decisionNote', 'decidedAt', 'approvalStep', 'approverIds', 'approvalHistory']);
       allow delete: if false;
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if activeUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /hrDocuments/{documentId} {
+      allow read: if activeUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /performanceGoals/{goalId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isEmployee()
+        && resource.data.employeeId == request.auth.uid
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.progress is number
+        && request.resource.data.progress >= 0
+        && request.resource.data.progress <= 100
+        && request.resource.data.status in ['active', 'completed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'status', 'updatedAt']));
+    }
+
+    match /candidates/{candidateId} {
+      allow read, create, update, delete: if isAdmin();
     }
 
     match /trackingSessions/{sessionId} {
