@@ -92,6 +92,7 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
   const [location, setLocation] = useState<WorkLocation | null>(null);
   const [photo, setPhoto] = useState("");
   const [challengeDone, setChallengeDone] = useState(false);
+  const [permissionLoading, setPermissionLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -100,22 +101,47 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
     return () => { streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null; };
   }, [open]);
 
+  useEffect(() => {
+    if (step === "camera" && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      void videoRef.current.play().catch(() => undefined);
+    }
+  }, [step]);
+
   async function begin() {
+    if (permissionLoading) return;
+    setPermissionLoading(true);
     setError("");
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
     try {
-      const [geo, locationDoc] = await Promise.all([
-        new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15_000 })),
-        getDoc(doc(db, "workLocations", employee.workLocationId || "default")),
-      ]);
+      if (!navigator.geolocation) throw new Error("GEOLOCATION_UNAVAILABLE");
+      const geo = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 20_000, maximumAge: 5_000 }));
       setPosition(geo);
-      if (locationDoc.exists()) setLocation({ id: locationDoc.id, ...locationDoc.data() } as WorkLocation);
+      try {
+        const locationDoc = await getDoc(doc(db, "workLocations", employee.workLocationId || "default"));
+        setLocation(locationDoc.exists() ? ({ id: locationDoc.id, ...locationDoc.data() } as WorkLocation) : null);
+      } catch {
+        setLocation(null);
+      }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("CAMERA_UNAVAILABLE");
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
       streamRef.current = stream;
       setStep("camera");
-      window.setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 50);
     } catch (permissionError) {
       const geoError = permissionError as Partial<GeolocationPositionError>;
-      setError(geoError.code ? "Izin lokasi dibutuhkan untuk mencatat kehadiran." : "Kamera atau lokasi tidak dapat diakses. Periksa izin browser.");
+      const mediaError = permissionError as DOMException;
+      if (geoError.code === 1) setError("Akses lokasi ditolak. Izinkan Location pada pengaturan situs lalu coba lagi.");
+      else if (geoError.code === 2) setError("Posisi GPS belum tersedia. Aktifkan lokasi perangkat atau coba di area dengan sinyal lebih baik.");
+      else if (geoError.code === 3) setError("Pencarian lokasi terlalu lama. Coba lagi dan pastikan lokasi perangkat aktif.");
+      else if (mediaError.name === "NotAllowedError") setError("Akses kamera ditolak. Izinkan Camera pada pengaturan situs lalu coba lagi.");
+      else if (mediaError.name === "NotReadableError") setError("Kamera sedang dipakai aplikasi atau tab lain. Tutup penggunaan kamera lain, lalu coba lagi.");
+      else if (mediaError.name === "NotFoundError") setError("Kamera depan tidak ditemukan pada perangkat ini.");
+      else if (mediaError.message === "GEOLOCATION_UNAVAILABLE") setError("Browser ini tidak menyediakan fitur lokasi.");
+      else if (mediaError.message === "CAMERA_UNAVAILABLE") setError("Browser ini tidak menyediakan akses kamera.");
+      else setError(`Kamera tidak dapat dimulai${mediaError.message ? `: ${mediaError.message}` : "."}`);
+    } finally {
+      setPermissionLoading(false);
     }
   }
 
@@ -149,7 +175,7 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
       const [shiftHour, shiftMinute] = (employee.shiftStart || "08:00").split(":").map(Number);
       const late = type === "check-in" && currentMinutes > shiftHour * 60 + shiftMinute + 10;
       const outside = Boolean(location) && distance > radius;
-      const status: AttendanceRecord["status"] = outside ? "outside" : late ? "late" : "valid";
+      const status: AttendanceRecord["status"] = !location ? "review" : outside ? "outside" : late ? "late" : "valid";
       await addDoc(collection(db, "attendance"), {
         employeeId: employee.id,
         employeeName: employee.fullName,
@@ -176,7 +202,7 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
 
   return (
     <Modal open={open} title={type === "check-in" ? "Check-in terverifikasi" : "Check-out terverifikasi"} description="Selesaikan lokasi dan liveness dalam satu alur." onClose={step === "submitting" ? () => undefined : onClose}>
-      {step === "permission" && <div className="capture-intro"><div className="capture-icons"><span><MapPin /></span><i /><span><Camera /></span><i /><span><Fingerprint /></span></div><h3>Tiga pemeriksaan singkat</h3><p>RekaHR akan mengambil satu titik lokasi, membuka kamera depan, lalu meminta gerakan sederhana untuk memastikan sesi berlangsung langsung.</p><div className="demo-warning"><ShieldCheck size={17} /><span>Mode showcase: liveness berjalan di perangkat dan tidak menyimpan foto ke database.</span></div><FormMessage error={error} /><button className="button button-primary full" onClick={() => void begin()}><Camera size={18} /> Mulai verifikasi</button></div>}
+      {step === "permission" && <div className="capture-intro"><div className="capture-icons"><span><MapPin /></span><i /><span><Camera /></span><i /><span><Fingerprint /></span></div><h3>Tiga pemeriksaan singkat</h3><p>RekaHR akan mengambil satu titik lokasi, membuka kamera depan, lalu meminta gerakan sederhana untuk memastikan sesi berlangsung langsung.</p><div className="demo-warning"><ShieldCheck size={17} /><span>Mode showcase: liveness berjalan di perangkat dan tidak menyimpan foto ke database.</span></div><FormMessage error={error} /><button className="button button-primary full" disabled={permissionLoading} onClick={() => void begin()}>{permissionLoading ? <><LoaderCircle className="spin" size={18} /> Memeriksa perangkat…</> : <><Camera size={18} /> Mulai verifikasi</>}</button></div>}
       {step === "camera" && <div className="camera-stage"><div className="camera-frame"><video ref={videoRef} autoPlay muted playsInline /><div className="face-guide" /><span className="camera-label"><Camera size={15} /> Kamera aktif</span></div><div className="liveness-challenge"><span><RefreshCw size={18} /></span><div><strong>Tantangan liveness</strong><p>Hadapkan wajah ke kamera, lalu <b>kedip dan menoleh sedikit ke kanan</b>.</p></div><button className={challengeDone ? "done" : ""} onClick={() => setChallengeDone(true)}>{challengeDone ? <><Check size={16} /> Selesai</> : "Saya sudah melakukan"}</button></div><button className="button button-primary full" disabled={!challengeDone} onClick={capture}><Fingerprint size={18} /> Ambil & verifikasi</button></div>}
       {step === "review" && <div className="capture-review"><img src={photo} alt="Pratinjau wajah untuk verifikasi" /><div className="verification-result"><span><Check size={20} /></span><div><strong>Liveness dan wajah terverifikasi</strong><p>Mode demo lokal • confidence tinggi</p></div></div><div className="location-result"><MapPin size={19} /><div><strong>Lokasi berhasil diperoleh</strong><p>{position ? `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} • akurasi ±${Math.round(position.coords.accuracy)} m` : ""}</p></div></div><FormMessage error={error} /><div className="modal-actions"><button className="button button-secondary" onClick={() => { setPhoto(""); setChallengeDone(false); void begin(); }}><RefreshCw size={16} /> Ulangi</button><button className="button button-primary" onClick={() => void submit()}><Check size={17} /> Konfirmasi {type === "check-in" ? "check-in" : "check-out"}</button></div></div>}
       {step === "submitting" && <div className="process-state"><LoaderCircle className="spin" size={36} /><h3>Menyimpan kehadiran</h3><p>Menandatangani waktu, lokasi, dan hasil verifikasi…</p></div>}
