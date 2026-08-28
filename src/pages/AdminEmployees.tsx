@@ -1,12 +1,12 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { deleteApp, initializeApp } from "firebase/app";
-import { createUserWithEmailAndPassword, getAuth, inMemoryPersistence, setPersistence } from "firebase/auth";
+import { createUserWithEmailAndPassword, getAuth, inMemoryPersistence, sendPasswordResetEmail, setPersistence } from "firebase/auth";
 import { addDoc, collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { Copy, KeyRound, MoreHorizontal, Plus, Search, UserPlus, Users } from "lucide-react";
 import { PageHeader, SectionCard } from "../Shell";
 import { EmptyState, FormField, FormMessage, Modal, StatusBadge, SubmitButton } from "../components";
 import { useLiveCollection } from "../data";
-import { db, firebaseConfig } from "../firebase";
+import { auth, db, firebaseConfig } from "../firebase";
 import { formatCurrency, friendlyError, generatePassword, initials } from "../lib";
 import type { Employee } from "../types";
 
@@ -197,10 +197,12 @@ function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Em
     allowance: String(employee.allowance || 0),
   });
   const [saving, setSaving] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   async function save(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setError("");
+    event.preventDefault(); setSaving(true); setError(""); setMessage("");
     try {
       await updateDoc(doc(db, "employees", employee.id), { ...form, baseSalary: Math.round(Number(form.baseSalary) || 0), allowance: Math.round(Number(form.allowance) || 0), updatedAt: serverTimestamp() });
       await updateDoc(doc(db, "users", employee.id), { displayName: form.fullName, updatedAt: serverTimestamp() });
@@ -208,9 +210,29 @@ function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Em
     } catch (saveError) { setError(friendlyError(saveError)); } finally { setSaving(false); }
   }
 
+  async function resetPassword() {
+    setResettingPassword(true);
+    setError("");
+    setMessage("");
+    try {
+      await sendPasswordResetEmail(auth, employee.email);
+      await addDoc(collection(db, "auditLogs"), {
+        action: "employee.password_reset_requested",
+        entityId: employee.id,
+        summary: `Tautan atur ulang password dikirim ke ${employee.email}`,
+        createdAt: serverTimestamp(),
+      });
+      setMessage(`Tautan atur ulang password sudah dikirim ke ${employee.email}.`);
+    } catch (resetError) {
+      setError(friendlyError(resetError));
+    } finally {
+      setResettingPassword(false);
+    }
+  }
+
   return (
     <Modal open title={`Edit ${employee.fullName}`} description={`${employee.employeeCode} • ${employee.email}`} onClose={onClose}>
-      <form onSubmit={save}><div className="form-grid two"><FormField label="Nama lengkap"><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required /></FormField><FormField label="Nomor telepon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField><FormField label="Departemen"><input value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} required /></FormField><FormField label="Jabatan"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} required /></FormField><FormField label="Jam masuk"><input type="time" value={form.shiftStart} onChange={(event) => setForm({ ...form, shiftStart: event.target.value })} /></FormField><FormField label="Jam pulang"><input type="time" value={form.shiftEnd} onChange={(event) => setForm({ ...form, shiftEnd: event.target.value })} /></FormField><FormField label="Gaji pokok"><input type="number" min="0" value={form.baseSalary} onChange={(event) => setForm({ ...form, baseSalary: event.target.value })} /></FormField><FormField label="Tunjangan tetap"><input type="number" min="0" value={form.allowance} onChange={(event) => setForm({ ...form, allowance: event.target.value })} /></FormField></div><FormMessage error={error} /><div className="modal-actions split-actions"><button type="button" className="button button-danger-ghost" onClick={onToggleStatus}>{employee.status === "active" ? "Nonaktifkan akun" : "Aktifkan akun"}</button><span /><button type="button" className="button button-secondary" onClick={onClose}>Batal</button><SubmitButton loading={saving}>Simpan perubahan</SubmitButton></div></form>
+      <form onSubmit={save}><div className="form-grid two"><FormField label="Nama lengkap"><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required /></FormField><FormField label="Nomor telepon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField><FormField label="Departemen"><input value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} required /></FormField><FormField label="Jabatan"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} required /></FormField><FormField label="Jam masuk"><input type="time" value={form.shiftStart} onChange={(event) => setForm({ ...form, shiftStart: event.target.value })} /></FormField><FormField label="Jam pulang"><input type="time" value={form.shiftEnd} onChange={(event) => setForm({ ...form, shiftEnd: event.target.value })} /></FormField><FormField label="Gaji pokok"><input type="number" min="0" value={form.baseSalary} onChange={(event) => setForm({ ...form, baseSalary: event.target.value })} /></FormField><FormField label="Tunjangan tetap"><input type="number" min="0" value={form.allowance} onChange={(event) => setForm({ ...form, allowance: event.target.value })} /></FormField></div><div className="password-reset-panel"><span><KeyRound size={20} /></span><div><strong>Atur ulang password</strong><p>Kirim tautan aman ke {employee.email}. Password baru ditentukan oleh karyawan.</p></div><button type="button" className="button button-secondary compact" disabled={resettingPassword} onClick={() => void resetPassword()}>{resettingPassword ? "Mengirim…" : "Kirim tautan reset"}</button></div><FormMessage error={error} success={message} /><div className="modal-actions split-actions"><button type="button" className="button button-danger-ghost" onClick={onToggleStatus}>{employee.status === "active" ? "Nonaktifkan akun" : "Aktifkan akun"}</button><span /><button type="button" className="button button-secondary" onClick={onClose}>Batal</button><SubmitButton loading={saving}>Simpan perubahan</SubmitButton></div></form>
     </Modal>
   );
 }
