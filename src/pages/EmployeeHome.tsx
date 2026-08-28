@@ -85,6 +85,40 @@ function LiveClock() {
   return <strong>{new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" }).format(time)}</strong>;
 }
 
+async function openAvailableCamera() {
+  const preferred: MediaStreamConstraints[] = [
+    { video: { facingMode: { ideal: "user" }, width: { ideal: 720 }, height: { ideal: 720 } }, audio: false },
+    { video: true, audio: false },
+  ];
+  let lastError: unknown;
+
+  for (const constraints of preferred) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (cameraError) {
+      lastError = cameraError;
+      const name = (cameraError as DOMException).name;
+      if (name === "NotAllowedError" || name === "SecurityError") throw cameraError;
+    }
+  }
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter((device) => device.kind === "videoinput" && device.deviceId);
+    for (const camera of cameras) {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: camera.deviceId } }, audio: false });
+      } catch (cameraError) {
+        lastError = cameraError;
+      }
+    }
+  } catch (deviceError) {
+    lastError ||= deviceError;
+  }
+
+  throw lastError || new Error("CAMERA_UNAVAILABLE");
+}
+
 function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; onClose: () => void; employee: Employee; type: "check-in" | "check-out" }) {
   const [step, setStep] = useState<CaptureStep>("permission");
   const [error, setError] = useState("");
@@ -95,10 +129,21 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
   const [permissionLoading, setPermissionLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const beginLockRef = useRef(false);
+  const requestIdRef = useRef(0);
+
+  function stopCamera() {
+    if (videoRef.current) videoRef.current.srcObject = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }
 
   useEffect(() => {
+    requestIdRef.current += 1;
+    beginLockRef.current = false;
+    setPermissionLoading(false);
     if (open) { setStep("permission"); setError(""); setPosition(null); setPhoto(""); setChallengeDone(false); }
-    return () => { streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null; };
+    return () => { requestIdRef.current += 1; stopCamera(); };
   }, [open]);
 
   useEffect(() => {
@@ -109,11 +154,12 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
   }, [step]);
 
   async function begin() {
-    if (permissionLoading) return;
+    if (beginLockRef.current) return;
+    beginLockRef.current = true;
+    const requestId = ++requestIdRef.current;
     setPermissionLoading(true);
     setError("");
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    stopCamera();
     try {
       if (!navigator.geolocation) throw new Error("GEOLOCATION_UNAVAILABLE");
       const geo = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 20_000, maximumAge: 5_000 }));
@@ -125,7 +171,11 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
         setLocation(null);
       }
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("CAMERA_UNAVAILABLE");
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
+      const stream = await openAvailableCamera();
+      if (requestId !== requestIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       setStep("camera");
     } catch (permissionError) {
@@ -135,13 +185,14 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
       else if (geoError.code === 2) setError("Posisi GPS belum tersedia. Aktifkan lokasi perangkat atau coba di area dengan sinyal lebih baik.");
       else if (geoError.code === 3) setError("Pencarian lokasi terlalu lama. Coba lagi dan pastikan lokasi perangkat aktif.");
       else if (mediaError.name === "NotAllowedError") setError("Akses kamera ditolak. Izinkan Camera pada pengaturan situs lalu coba lagi.");
-      else if (mediaError.name === "NotReadableError") setError("Kamera sedang dipakai aplikasi atau tab lain. Tutup penggunaan kamera lain, lalu coba lagi.");
+      else if (mediaError.name === "NotReadableError" || mediaError.name === "AbortError") setError("Windows atau browser belum berhasil memulai kamera. Tutup modal ini, muat ulang halaman, lalu coba kembali. Jika tetap gagal, periksa Settings Windows > Privacy & security > Camera.");
       else if (mediaError.name === "NotFoundError") setError("Kamera depan tidak ditemukan pada perangkat ini.");
       else if (mediaError.message === "GEOLOCATION_UNAVAILABLE") setError("Browser ini tidak menyediakan fitur lokasi.");
       else if (mediaError.message === "CAMERA_UNAVAILABLE") setError("Browser ini tidak menyediakan akses kamera.");
       else setError(`Kamera tidak dapat dimulai${mediaError.message ? `: ${mediaError.message}` : "."}`);
     } finally {
-      setPermissionLoading(false);
+      if (requestId === requestIdRef.current) setPermissionLoading(false);
+      beginLockRef.current = false;
     }
   }
 
@@ -157,7 +208,7 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
     const sy = (video.videoHeight - size) / 2;
     context.drawImage(video, sx, sy, size, size, 0, 0, 480, 480);
     setPhoto(canvas.toDataURL("image/webp", 0.72));
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+    stopCamera();
     setStep("review");
   }
 
