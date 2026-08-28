@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function activeUser() {
+      return signedIn() && userData().active == true;
+    }
+
+    function isAdmin() {
+      return activeUser() && userData().role == 'admin';
+    }
+
+    function isEmployee() {
+      return activeUser() && userData().role == 'employee';
+    }
+
+    function owns(employeeId) {
+      return signedIn() && employeeId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isAdmin() || owns(employeeId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /settings/{documentId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /workLocations/{locationId} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create: if isEmployee()
+        && request.resource.data.employeeId == request.auth.uid
+        && request.resource.data.type in ['check-in', 'check-out']
+        && request.resource.data.keys().hasAll([
+          'employeeId', 'employeeName', 'type', 'clientTimestamp',
+          'dateKey', 'latitude', 'longitude', 'accuracy',
+          'faceVerified', 'status', 'createdAt'
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /attendanceCorrections/{correctionId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create: if isEmployee()
+        && request.resource.data.employeeId == request.auth.uid
+        && request.resource.data.status == 'submitted';
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /trackingSessions/{sessionId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create: if isEmployee()
+        && request.resource.data.employeeId == request.auth.uid
+        && request.resource.data.status == 'active';
+      allow update: if isEmployee()
+        && resource.data.employeeId == request.auth.uid
+        && request.resource.data.employeeId == resource.data.employeeId;
+      allow delete: if false;
+
+      match /points/{pointId} {
+        allow read: if isAdmin()
+          || (isEmployee()
+            && get(/databases/$(database)/documents/trackingSessions/$(sessionId)).data.employeeId == request.auth.uid);
+        allow create: if isEmployee()
+          && get(/databases/$(database)/documents/trackingSessions/$(sessionId)).data.employeeId == request.auth.uid
+          && get(/databases/$(database)/documents/trackingSessions/$(sessionId)).data.status == 'active';
+        allow update, delete: if false;
+      }
+    }
+
+    match /payrollRuns/{runId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /payslips/{payslipId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

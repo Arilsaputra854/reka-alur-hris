@@ -1,0 +1,77 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, BadgeCheck, Eye, EyeOff, Fingerprint, MapPin, WalletCards } from "lucide-react";
+import { useAuth } from "../auth";
+import { friendlyError } from "../lib";
+import { FormMessage } from "../components";
+
+export function LoginPage() {
+  const { login, profile } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (profile) navigate(profile.role === "admin" ? "/admin" : "/employee", { replace: true });
+  }, [navigate, profile]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const account = await login(email.trim(), password);
+      navigate(account.role === "admin" ? "/admin" : "/employee", { replace: true });
+    } catch (loginError) {
+      setError(friendlyError(loginError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <section className="login-story">
+        <div className="login-brand"><div className="brand-mark large">R<span>•</span></div><span>RekaHR</span></div>
+        <div className="story-content">
+          <span className="story-kicker"><BadgeCheck size={16} /> HR operations, made visible</span>
+          <h1>Satu alur untuk<br /><em>semua orang.</em></h1>
+          <p>Kelola karyawan, kehadiran, payroll, dan aktivitas lapangan dalam ruang kerja yang tenang dan terukur.</p>
+          <div className="story-features">
+            <div><span><Fingerprint size={20} /></span><p><strong>Absensi terverifikasi</strong><small>Lokasi, wajah, dan waktu dalam satu bukti.</small></p></div>
+            <div><span><WalletCards size={20} /></span><p><strong>Payroll terkoneksi</strong><small>Dari rekap ke slip gaji tanpa data ganda.</small></p></div>
+            <div><span><MapPin size={20} /></span><p><strong>Aktivitas lapangan</strong><small>Sesi tracking transparan dan terkontrol.</small></p></div>
+          </div>
+        </div>
+        <footer>© 2026 Reka Alur Teknologi <span>•</span> Firebase secured</footer>
+      </section>
+      <section className="login-panel">
+        <div className="login-card">
+          <span className="login-eyebrow">Selamat datang kembali</span>
+          <h2>Masuk ke workspace</h2>
+          <p>Gunakan akun yang diberikan oleh administrator perusahaan.</p>
+          <form onSubmit={submit}>
+            <label className="form-field">
+              <span>Email kerja</span>
+              <input type="email" autoComplete="email" placeholder="nama@perusahaan.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            </label>
+            <label className="form-field">
+              <span>Password</span>
+              <div className="password-input">
+                <input type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Masukkan password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                <button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+              </div>
+            </label>
+            <div className="login-options"><label><input type="checkbox" /> Ingat saya</label><span>Hubungi admin jika lupa password</span></div>
+            <FormMessage error={error} />
+            <button className="button button-primary login-submit" disabled={loading}>{loading ? "Memeriksa akun…" : <>Masuk ke RekaHR <ArrowRight size={18} /></>}</button>
+          </form>
+          <div className="login-help"><span>Butuh bantuan?</span> Hubungi administrator RekaHR di perusahaanmu.</div>
+        </div>
+      </section>
+    </div>
+  );
+}
