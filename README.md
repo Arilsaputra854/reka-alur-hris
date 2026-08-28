@@ -5,7 +5,7 @@ Web/PWA HRIS untuk Reka Alur Teknologi dengan dua portal dalam satu deployment:
 - Admin: `/admin`
 - Employee: `/employee`
 
-Fitur utama: manajemen karyawan, attendance dengan geofence dan liveness demo, koreksi attendance, geo tracking berbasis sesi, payroll, serta slip gaji employee.
+Fitur utama: manajemen karyawan, attendance dengan geofence dan liveness demo, koreksi attendance, pengajuan cuti/lembur/reimbursement beserta approval dan saldo cuti, pusat notifikasi, geo tracking berbasis sesi, payroll, serta slip gaji employee.
 
 ## Firebase project
 
@@ -67,3 +67,5 @@ docs/FLOW-PENGGUNAAN.md Alur setup dan penggunaan
 - Kredensial bootstrap tersimpan pada file lokal yang diabaikan Git.
 
 Lihat [alur penggunaan](docs/FLOW-PENGGUNAAN.md) untuk urutan pengisian data.
+
+Lihat [audit kesiapan publish](docs/PUBLISH-READINESS-AUDIT.md) untuk fitur yang sudah tersedia dan backlog sebelum penggunaan production riil.

@@ -90,3 +90,17 @@ Akun bootstrap ditujukan untuk serah terima awal. Setelah menerima aplikasi:
 1. Ganti password admin.
 2. Bila email bootstrap bukan email operasional, ubah akun melalui Firebase Authentication atau buat fitur admin-user management lanjutan.
 3. Jangan membagikan akun admin kepada employee.
+## 9. Pengajuan employee dan approval admin
+
+1. Employee membuka **Pengajuan** dari navigasi utama atau bottom navigation.
+2. Employee melihat saldo cuti dan status pengajuan sebelumnya.
+3. Employee memilih **Cuti / izin**, **Lembur**, atau **Reimbursement**, lalu mengisi detail dan alasan.
+4. Admin menerima indikator pada bel notifikasi dan membuka **Pengajuan**.
+5. Admin menyetujui atau menolak dengan catatan. Untuk cuti tahunan, sistem memeriksa saldo dan menguranginya dalam satu transaksi.
+6. Employee melihat status dan catatan keputusan pada halaman yang sama.
+
+## 10. Pemulihan password
+
+- Dari halaman login, masukkan email kerja lalu pilih **Lupa password?**.
+- Dari Admin → Karyawan → Edit, admin dapat mengirim tautan reset ke email akun.
+- Password baru diproses oleh Firebase Authentication dan tidak disimpan di Firestore.

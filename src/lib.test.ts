@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateKey, distanceMeters, formatCurrency, generatePassword } from "./lib";
+import { dateKey, daysInclusive, distanceMeters, formatCurrency, generatePassword } from "./lib";
 
 describe("utility functions", () => {
   it("formats rupiah without decimals", () => {
@@ -18,5 +18,10 @@ describe("utility functions", () => {
     const password = generatePassword();
     expect(password).toHaveLength(14);
     expect(generatePassword()).not.toBe(password);
+  });
+
+  it("counts leave dates inclusively and rejects reversed periods", () => {
+    expect(daysInclusive("2026-08-28", "2026-08-30")).toBe(3);
+    expect(daysInclusive("2026-08-30", "2026-08-28")).toBe(0);
   });
 });

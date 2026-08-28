@@ -4,6 +4,8 @@ import { ArrowRight, BadgeCheck, Eye, EyeOff, Fingerprint, MapPin, WalletCards }
 import { useAuth } from "../auth";
 import { friendlyError } from "../lib";
 import { FormMessage } from "../components";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase";
 
 export function LoginPage() {
   const { login, profile } = useAuth();
@@ -13,6 +15,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (profile) navigate(profile.role === "admin" ? "/admin" : "/employee", { replace: true });
@@ -22,6 +26,7 @@ export function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
     try {
       const account = await login(email.trim(), password);
       navigate(account.role === "admin" ? "/admin" : "/employee", { replace: true });
@@ -29,6 +34,24 @@ export function LoginPage() {
       setError(friendlyError(loginError));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function resetPassword() {
+    setError("");
+    setMessage("");
+    if (!email.trim()) {
+      setError("Masukkan email kerja terlebih dahulu untuk mengatur ulang password.");
+      return;
+    }
+    setResetting(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setMessage("Tautan pengaturan password sudah dikirim. Periksa inbox atau folder spam.");
+    } catch (resetError) {
+      setError(friendlyError(resetError));
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -65,8 +88,8 @@ export function LoginPage() {
                 <button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
               </div>
             </label>
-            <div className="login-options"><label><input type="checkbox" /> Ingat saya</label><span>Hubungi admin jika lupa password</span></div>
-            <FormMessage error={error} />
+            <div className="login-options"><label><input type="checkbox" /> Ingat saya</label><button type="button" onClick={() => void resetPassword()} disabled={resetting}>{resetting ? "Mengirim…" : "Lupa password?"}</button></div>
+            <FormMessage error={error} success={message} />
             <button className="button button-primary login-submit" disabled={loading}>{loading ? "Memeriksa akun…" : <>Masuk ke RekaHR <ArrowRight size={18} /></>}</button>
           </form>
           <div className="login-help"><span>Butuh bantuan?</span> Hubungi administrator RekaHR di perusahaanmu.</div>

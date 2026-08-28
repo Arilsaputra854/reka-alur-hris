@@ -28,7 +28,28 @@ export interface Employee {
   baseSalary: number;
   allowance: number;
   faceEnrolled: boolean;
+  annualLeaveQuota?: number;
+  annualLeaveUsed?: number;
   createdAt?: Timestamp;
+}
+
+export type RequestCategory = "leave" | "overtime" | "reimbursement";
+
+export interface EmployeeRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  category: RequestCategory;
+  requestType: string;
+  startDate: string;
+  endDate: string;
+  hours: number;
+  amount: number;
+  reason: string;
+  status: "submitted" | "approved" | "rejected";
+  decisionNote?: string;
+  createdAt?: Timestamp;
+  decidedAt?: Timestamp;
 }
 
 export interface AttendanceRecord {

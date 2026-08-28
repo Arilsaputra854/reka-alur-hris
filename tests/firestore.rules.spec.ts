@@ -7,7 +7,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { addDoc, collection, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, query, setDoc, Timestamp, updateDoc, where } from "firebase/firestore";
 
 let env: RulesTestEnvironment;
 
@@ -29,6 +29,8 @@ beforeEach(async () => {
     await setDoc(doc(db, "employees", "employee-2"), { fullName: "Employee Two", status: "active" });
     await setDoc(doc(db, "payslips", "slip-1"), { employeeId: "employee-1", status: "published", net: 5_000_000 });
     await setDoc(doc(db, "payslips", "slip-2"), { employeeId: "employee-2", status: "published", net: 6_000_000 });
+    await setDoc(doc(db, "requests", "request-1"), { employeeId: "employee-1", employeeName: "Employee One", category: "leave", requestType: "Cuti tahunan", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Keperluan keluarga", status: "submitted", createdAt: Timestamp.now() });
+    await setDoc(doc(db, "requests", "request-2"), { employeeId: "employee-2", employeeName: "Employee Two", category: "overtime", requestType: "Lembur", startDate: "2026-09-01", endDate: "2026-09-01", hours: 2, amount: 0, reason: "Penyelesaian pekerjaan", status: "submitted", createdAt: Timestamp.now() });
   });
 });
 
@@ -71,5 +73,20 @@ describe("Firestore authorization", () => {
       createdAt: Timestamp.now(),
     }));
     await assertFails(updateDoc(ref, { status: "review" }));
+  });
+
+  it("lets employees create and query only their own requests", async () => {
+    const db = env.authenticatedContext("employee-1").firestore();
+    await assertSucceeds(getDocs(query(collection(db, "requests"), where("employeeId", "==", "employee-1"))));
+    await assertFails(getDoc(doc(db, "requests", "request-2")));
+    await assertSucceeds(addDoc(collection(db, "requests"), { employeeId: "employee-1", employeeName: "Employee One", category: "reimbursement", requestType: "Transportasi", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 100000, reason: "Transportasi kunjungan klien", status: "submitted", createdAt: Timestamp.now() }));
+    await assertFails(addDoc(collection(db, "requests"), { employeeId: "employee-2", employeeName: "Employee Two", category: "leave", requestType: "Cuti", startDate: "2026-09-01", endDate: "2026-09-01", hours: 0, amount: 0, reason: "Tidak boleh membuat milik orang lain", status: "submitted", createdAt: Timestamp.now() }));
+  });
+
+  it("allows admins to decide requests without rewriting business fields", async () => {
+    const db = env.authenticatedContext("admin-1").firestore();
+    const requestRef = doc(db, "requests", "request-1");
+    await assertSucceeds(updateDoc(requestRef, { status: "approved", decisionNote: "Disetujui", decidedAt: Timestamp.now() }));
+    await assertFails(updateDoc(doc(db, "requests", "request-2"), { status: "approved", reason: "Isi diubah admin", decidedAt: Timestamp.now() }));
   });
 });

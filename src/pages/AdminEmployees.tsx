@@ -22,6 +22,7 @@ interface EmployeeForm {
   shiftEnd: string;
   baseSalary: string;
   allowance: string;
+  annualLeaveQuota: string;
   password: string;
 }
 
@@ -37,6 +38,7 @@ const initialForm: EmployeeForm = {
   shiftEnd: "17:00",
   baseSalary: "",
   allowance: "0",
+  annualLeaveQuota: "12",
   password: "",
 };
 
@@ -86,6 +88,8 @@ export function AdminEmployees() {
         workLocationId: "default",
         baseSalary: Math.round(Number(form.baseSalary) || 0),
         allowance: Math.round(Number(form.allowance) || 0),
+        annualLeaveQuota: Math.max(0, Math.round(Number(form.annualLeaveQuota) || 0)),
+        annualLeaveUsed: 0,
         faceEnrolled: false,
         createdAt: serverTimestamp() as never,
       };
@@ -174,6 +178,7 @@ export function AdminEmployees() {
               <FormField label="Jam pulang"><input type="time" value={form.shiftEnd} onChange={(event) => patch("shiftEnd", event.target.value)} required /></FormField>
               <FormField label="Gaji pokok"><input type="number" min="0" value={form.baseSalary} onChange={(event) => patch("baseSalary", event.target.value)} placeholder="5000000" required /></FormField>
               <FormField label="Tunjangan tetap"><input type="number" min="0" value={form.allowance} onChange={(event) => patch("allowance", event.target.value)} /></FormField>
+              <FormField label="Jatah cuti tahunan"><input type="number" min="0" value={form.annualLeaveQuota} onChange={(event) => patch("annualLeaveQuota", event.target.value)} required /></FormField>
             </div>
             <FormMessage error={error} />
             <div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setOpen(false)}>Batal</button><SubmitButton loading={saving}>Buat akun karyawan</SubmitButton></div>
@@ -195,6 +200,7 @@ function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Em
     shiftEnd: employee.shiftEnd || "17:00",
     baseSalary: String(employee.baseSalary || 0),
     allowance: String(employee.allowance || 0),
+    annualLeaveQuota: String(employee.annualLeaveQuota ?? 12),
   });
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -204,7 +210,7 @@ function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Em
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "employees", employee.id), { ...form, baseSalary: Math.round(Number(form.baseSalary) || 0), allowance: Math.round(Number(form.allowance) || 0), updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, "employees", employee.id), { ...form, baseSalary: Math.round(Number(form.baseSalary) || 0), allowance: Math.round(Number(form.allowance) || 0), annualLeaveQuota: Math.max(0, Math.round(Number(form.annualLeaveQuota) || 0)), updatedAt: serverTimestamp() });
       await updateDoc(doc(db, "users", employee.id), { displayName: form.fullName, updatedAt: serverTimestamp() });
       onClose();
     } catch (saveError) { setError(friendlyError(saveError)); } finally { setSaving(false); }
@@ -232,7 +238,7 @@ function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Em
 
   return (
     <Modal open title={`Edit ${employee.fullName}`} description={`${employee.employeeCode} • ${employee.email}`} onClose={onClose}>
-      <form onSubmit={save}><div className="form-grid two"><FormField label="Nama lengkap"><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required /></FormField><FormField label="Nomor telepon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField><FormField label="Departemen"><input value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} required /></FormField><FormField label="Jabatan"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} required /></FormField><FormField label="Jam masuk"><input type="time" value={form.shiftStart} onChange={(event) => setForm({ ...form, shiftStart: event.target.value })} /></FormField><FormField label="Jam pulang"><input type="time" value={form.shiftEnd} onChange={(event) => setForm({ ...form, shiftEnd: event.target.value })} /></FormField><FormField label="Gaji pokok"><input type="number" min="0" value={form.baseSalary} onChange={(event) => setForm({ ...form, baseSalary: event.target.value })} /></FormField><FormField label="Tunjangan tetap"><input type="number" min="0" value={form.allowance} onChange={(event) => setForm({ ...form, allowance: event.target.value })} /></FormField></div><div className="password-reset-panel"><span><KeyRound size={20} /></span><div><strong>Atur ulang password</strong><p>Kirim tautan aman ke {employee.email}. Password baru ditentukan oleh karyawan.</p></div><button type="button" className="button button-secondary compact" disabled={resettingPassword} onClick={() => void resetPassword()}>{resettingPassword ? "Mengirim…" : "Kirim tautan reset"}</button></div><FormMessage error={error} success={message} /><div className="modal-actions split-actions"><button type="button" className="button button-danger-ghost" onClick={onToggleStatus}>{employee.status === "active" ? "Nonaktifkan akun" : "Aktifkan akun"}</button><span /><button type="button" className="button button-secondary" onClick={onClose}>Batal</button><SubmitButton loading={saving}>Simpan perubahan</SubmitButton></div></form>
+      <form onSubmit={save}><div className="form-grid two"><FormField label="Nama lengkap"><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required /></FormField><FormField label="Nomor telepon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField><FormField label="Departemen"><input value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} required /></FormField><FormField label="Jabatan"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} required /></FormField><FormField label="Jam masuk"><input type="time" value={form.shiftStart} onChange={(event) => setForm({ ...form, shiftStart: event.target.value })} /></FormField><FormField label="Jam pulang"><input type="time" value={form.shiftEnd} onChange={(event) => setForm({ ...form, shiftEnd: event.target.value })} /></FormField><FormField label="Gaji pokok"><input type="number" min="0" value={form.baseSalary} onChange={(event) => setForm({ ...form, baseSalary: event.target.value })} /></FormField><FormField label="Tunjangan tetap"><input type="number" min="0" value={form.allowance} onChange={(event) => setForm({ ...form, allowance: event.target.value })} /></FormField><FormField label="Jatah cuti tahunan"><input type="number" min="0" value={form.annualLeaveQuota} onChange={(event) => setForm({ ...form, annualLeaveQuota: event.target.value })} /></FormField></div><div className="password-reset-panel"><span><KeyRound size={20} /></span><div><strong>Atur ulang password</strong><p>Kirim tautan aman ke {employee.email}. Password baru ditentukan oleh karyawan.</p></div><button type="button" className="button button-secondary compact" disabled={resettingPassword} onClick={() => void resetPassword()}>{resettingPassword ? "Mengirim…" : "Kirim tautan reset"}</button></div><FormMessage error={error} success={message} /><div className="modal-actions split-actions"><button type="button" className="button button-danger-ghost" onClick={onToggleStatus}>{employee.status === "active" ? "Nonaktifkan akun" : "Aktifkan akun"}</button><span /><button type="button" className="button button-secondary" onClick={onClose}>Batal</button><SubmitButton loading={saving}>Simpan perubahan</SubmitButton></div></form>
     </Modal>
   );
 }

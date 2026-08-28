@@ -43,6 +43,13 @@ export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: n
   return Math.round(radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+export function daysInclusive(start: string, end: string) {
+  const startTime = Date.parse(`${start}T00:00:00Z`);
+  const endTime = Date.parse(`${end}T00:00:00Z`);
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) return 0;
+  return Math.floor((endTime - startTime) / 86_400_000) + 1;
+}
+
 export function initials(name: string) {
   return name
     .split(" ")

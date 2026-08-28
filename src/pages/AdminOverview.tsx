@@ -1,17 +1,18 @@
 import { useMemo } from "react";
-import { Activity, ArrowUpRight, Clock3, MapPinned, Sparkles, UserRoundCheck, Users, WalletCards } from "lucide-react";
+import { Activity, ArrowUpRight, Clock3, FileCheck2, MapPinned, Sparkles, UserRoundCheck, Users, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MetricCard, PageHeader, SectionCard } from "../Shell";
 import { EmptyState, StatusBadge } from "../components";
 import { useLiveCollection } from "../data";
 import { dateKey, formatCurrency, formatDateTime, initials } from "../lib";
-import type { AttendanceRecord, Employee, PayrollRun, TrackingSession } from "../types";
+import type { AttendanceRecord, Employee, EmployeeRequest, PayrollRun, TrackingSession } from "../types";
 
 export function AdminOverview() {
   const employees = useLiveCollection<Employee>("employees");
   const attendance = useLiveCollection<AttendanceRecord>("attendance");
   const payroll = useLiveCollection<PayrollRun>("payrollRuns");
   const tracking = useLiveCollection<TrackingSession>("trackingSessions");
+  const requests = useLiveCollection<EmployeeRequest>("requests");
   const today = dateKey();
 
   const todayRecords = useMemo(() => attendance.data.filter((item) => item.dateKey === today), [attendance.data, today]);
@@ -21,10 +22,12 @@ export function AdminOverview() {
   const latest = [...todayRecords].sort((a, b) => b.clientTimestamp.localeCompare(a.clientTimestamp)).slice(0, 6);
   const publishedPayroll = payroll.data.filter((item) => item.status === "published");
   const payrollTotal = publishedPayroll.reduce((sum, item) => sum + item.totalNet, 0);
+  const pendingRequests = requests.data.filter((item) => item.status === "submitted");
+  const dateLabel = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date());
 
   return (
     <>
-      <PageHeader eyebrow="Jumat, 28 Agustus 2026" title="Selamat datang di RekaHR" description="Ringkasan aktivitas tenaga kerja dan operasi HR hari ini." actions={<Link className="button button-primary" to="/admin/karyawan"><Users size={17} /> Tambah karyawan</Link>} />
+      <PageHeader eyebrow={dateLabel} title="Selamat datang di RekaHR" description="Ringkasan aktivitas tenaga kerja dan operasi HR hari ini." actions={<Link className="button button-primary" to={pendingRequests.length ? "/admin/pengajuan" : "/admin/karyawan"}>{pendingRequests.length ? <><FileCheck2 size={17} /> Tinjau {pendingRequests.length} pengajuan</> : <><Users size={17} /> Tambah karyawan</>}</Link>} />
       <div className="metrics-grid">
         <MetricCard label="Karyawan aktif" value={activeEmployees.length} delta={employees.data.length ? `${employees.data.length} total terdaftar` : "Belum ada data"} icon={Users} tone="navy" />
         <MetricCard label="Hadir hari ini" value={presentIds.size} delta={activeEmployees.length ? `${Math.round((presentIds.size / activeEmployees.length) * 100)}% dari karyawan aktif` : "Menunggu data karyawan"} icon={UserRoundCheck} tone="teal" />

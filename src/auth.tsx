@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import type { AppUser } from "./types";
 
@@ -40,6 +40,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    return onSnapshot(doc(db, "users", firebaseUser.uid), (snapshot) => {
+      setProfile(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as AppUser) : null);
+    });
+  }, [firebaseUser]);
 
   const value = useMemo<AuthContextValue>(() => ({
     firebaseUser,

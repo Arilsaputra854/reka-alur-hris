@@ -72,6 +72,38 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /requests/{requestId} {
+      allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow create: if isEmployee()
+        && request.resource.data.employeeId == request.auth.uid
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.category in ['leave', 'overtime', 'reimbursement']
+        && request.resource.data.keys().hasAll([
+          'employeeId', 'employeeName', 'category', 'requestType',
+          'startDate', 'endDate', 'hours', 'amount', 'reason',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'employeeId', 'employeeName', 'category', 'requestType',
+          'startDate', 'endDate', 'hours', 'amount', 'reason',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.employeeName is string
+        && request.resource.data.requestType is string
+        && request.resource.data.reason is string
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string
+        && request.resource.data.hours is number
+        && request.resource.data.amount is number;
+      allow update: if isAdmin()
+        && resource.data.status == 'submitted'
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.category == resource.data.category
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decisionNote', 'decidedAt']);
+      allow delete: if false;
+    }
+
     match /trackingSessions/{sessionId} {
       allow read: if isAdmin() || (isEmployee() && resource.data.employeeId == request.auth.uid);
       allow create: if isEmployee()

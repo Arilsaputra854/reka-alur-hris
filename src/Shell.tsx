@@ -1,5 +1,6 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { collection, query, where } from "firebase/firestore";
 import {
   Bell,
   CalendarDays,
@@ -7,6 +8,7 @@ import {
   CircleDollarSign,
   Clock3,
   FileText,
+  FileCheck2,
   Gauge,
   LogOut,
   MapPinned,
@@ -19,6 +21,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { initials } from "./lib";
+import { useLiveQuery } from "./data";
+import { db } from "./firebase";
+import type { EmployeeRequest } from "./types";
 
 type Icon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
@@ -26,6 +31,7 @@ const adminNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Overview", to: "/admin", icon: Gauge },
   { label: "Karyawan", to: "/admin/karyawan", icon: Users },
   { label: "Kehadiran", to: "/admin/kehadiran", icon: Clock3 },
+  { label: "Pengajuan", to: "/admin/pengajuan", icon: FileCheck2 },
   { label: "Geo tracking", to: "/admin/tracking", icon: MapPinned },
   { label: "Penggajian", to: "/admin/payroll", icon: CircleDollarSign },
   { label: "Konfigurasi", to: "/admin/konfigurasi", icon: Settings },
@@ -33,6 +39,7 @@ const adminNav: Array<{ label: string; to: string; icon: Icon }> = [
 
 const employeeNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Beranda", to: "/employee", icon: Gauge },
+  { label: "Pengajuan", to: "/employee/pengajuan", icon: FileCheck2 },
   { label: "Riwayat", to: "/employee/riwayat", icon: CalendarDays },
   { label: "Tracking", to: "/employee/tracking", icon: MapPinned },
   { label: "Slip gaji", to: "/employee/slip-gaji", icon: WalletCards },
@@ -43,12 +50,22 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
   const { profile, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const location = useLocation();
   const nav = type === "admin" ? adminNav : employeeNav;
+  const notificationQuery = useMemo(() => type === "admin"
+    ? query(collection(db, "requests"))
+    : query(collection(db, "requests"), where("employeeId", "==", profile?.employeeId || profile?.id || "none")), [profile?.employeeId, profile?.id, type]);
+  const { data: requestNotifications } = useLiveQuery<EmployeeRequest>(notificationQuery);
+  const notifications = useMemo(() => [...requestNotifications]
+    .filter((item) => type === "admin" ? item.status === "submitted" : true)
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .slice(0, 5), [requestNotifications, type]);
 
   useEffect(() => {
     setMobileOpen(false);
     setProfileOpen(false);
+    setNotificationOpen(false);
   }, [location.pathname]);
 
   const sidebar = (
@@ -97,9 +114,12 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button notification-button" aria-label="Notifikasi"><Bell size={19} /><i /></button>
+            <div className="notification-wrap">
+              <button className="icon-button notification-button" aria-label="Notifikasi" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{notifications.length > 0 && <i />}</button>
+              {notificationOpen && <div className="notification-menu"><header><strong>Notifikasi</strong><span>{notifications.length} terbaru</span></header>{notifications.length ? <div>{notifications.map((item) => <NavLink key={item.id} to={type === "admin" ? "/admin/pengajuan" : "/employee/pengajuan"}><span className={`notification-state ${item.status}`}><FileCheck2 size={16} /></span><p><strong>{type === "admin" ? item.employeeName : item.requestType}</strong><small>{type === "admin" ? `${item.requestType} menunggu keputusan` : `Status: ${item.status === "submitted" ? "menunggu persetujuan" : item.status === "approved" ? "disetujui" : "ditolak"}`}</small></p></NavLink>)}</div> : <p className="notification-empty">Belum ada notifikasi baru.</p>}<NavLink className="notification-all" to={type === "admin" ? "/admin/pengajuan" : "/employee/pengajuan"}>Lihat semua pengajuan</NavLink></div>}
+            </div>
             <div className="profile-menu-wrap">
-              <button className="profile-button" onClick={() => setProfileOpen((value) => !value)}>
+              <button className="profile-button" onClick={() => { setProfileOpen((value) => !value); setNotificationOpen(false); }}>
                 <span className="avatar">{initials(profile?.displayName || "User")}</span>
                 <span className="profile-label"><strong>{profile?.displayName}</strong><small>{profile?.email}</small></span>
                 <ChevronDown size={16} />
@@ -116,7 +136,7 @@ export function AppShell({ type, children }: { type: "admin" | "employee"; child
         <main className="page-content">{children}</main>
         {type === "employee" && (
           <nav className="bottom-nav" aria-label="Navigasi karyawan">
-            {employeeNav.slice(0, 4).map(({ label, to, icon: Icon }) => (
+            {employeeNav.slice(0, 5).map(({ label, to, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === "/employee"} className={({ isActive }) => isActive ? "active" : ""}>
                 <Icon size={20} /><span>{label}</span>
               </NavLink>
