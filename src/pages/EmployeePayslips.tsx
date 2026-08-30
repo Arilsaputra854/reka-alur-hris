@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { collection, orderBy, query, where } from "firebase/firestore";
-import { Download, FileText, LockKeyhole, ReceiptText, WalletCards, X } from "lucide-react";
+import { Download, FileText, LockKeyhole, Printer, ReceiptText, WalletCards, X } from "lucide-react";
 import { useAuth } from "../auth";
 import { EmptyState, StatusBadge } from "../components";
 import { useLiveQuery } from "../data";
@@ -8,6 +8,7 @@ import { db } from "../firebase";
 import { formatCurrency } from "../lib";
 import { PageHeader, SectionCard } from "../Shell";
 import type { Payslip } from "../types";
+import { downloadPayslipPdf } from "../payslipPdf";
 
 export function EmployeePayslips() {
   const { firebaseUser } = useAuth();
@@ -41,7 +42,7 @@ export function EmployeePayslips() {
             <div className="payslip-lines"><h3>Penghasilan</h3><div><span>Gaji pokok</span><strong>{formatCurrency(selected.baseSalary)}</strong></div><div><span>Tunjangan tetap</span><strong>{formatCurrency(selected.allowance)}</strong></div><div><span>Tunjangan kehadiran</span><strong>{formatCurrency(selected.attendanceAllowance)}</strong></div><div><span>Lembur</span><strong>{formatCurrency(selected.overtime)}</strong></div><div><span>Reimbursement</span><strong>{formatCurrency(selected.reimbursement || 0)}</strong></div><div className="subtotal"><span>Penghasilan bruto</span><strong>{formatCurrency(selected.gross)}</strong></div><h3>Potongan</h3><div><span>BPJS Kesehatan (pekerja)</span><strong>- {formatCurrency(selected.bpjsHealth || 0)}</strong></div><div><span>BPJS Ketenagakerjaan (pekerja)</span><strong>- {formatCurrency(selected.bpjsEmployment || 0)}</strong></div><div><span>PPh Pasal 21</span><strong>- {formatCurrency(selected.incomeTax || 0)}</strong></div><div className="subtotal"><span>Total potongan</span><strong>- {formatCurrency(selected.deduction)}</strong></div></div>
             <div className="payslip-total"><span>TAKE HOME PAY</span><strong>{formatCurrency(selected.net)}</strong></div>
             <footer><p>Dokumen dibuat otomatis oleh RekaHR berdasarkan profil tarif karyawan dan pengajuan yang telah disetujui. Validasi akhir tetap menjadi tanggung jawab Payroll Admin.</p><small>Document ID: {selected.id}</small></footer>
-            <button className="button button-primary full no-print" onClick={() => window.print()}><Download size={17} /> Simpan / cetak PDF</button>
+            <div className="payslip-actions no-print"><button className="button button-secondary" onClick={() => window.print()}><Printer size={17}/> Cetak</button><button className="button button-primary" onClick={() => void downloadPayslipPdf(selected)}><Download size={17} /> Unduh PDF</button></div>
           </article>
         </div>
       )}

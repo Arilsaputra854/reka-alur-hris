@@ -13,7 +13,6 @@ import {
   FileCheck2,
   Gauge,
   LogOut,
-  MapPinned,
   Menu,
   Settings,
   ShieldCheck,
@@ -35,7 +34,8 @@ const adminNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Kehadiran", to: "/admin/kehadiran", icon: Clock3 },
   { label: "Pengajuan", to: "/admin/pengajuan", icon: FileCheck2 },
   { label: "People Ops", to: "/admin/people-ops", icon: BriefcaseBusiness },
-  { label: "Geo tracking", to: "/admin/tracking", icon: MapPinned },
+  { label: "Recruitment", to: "/admin/recruitment", icon: BriefcaseBusiness },
+  { label: "Kontrak", to: "/admin/kontrak", icon: FileText },
   { label: "Penggajian", to: "/admin/payroll", icon: CircleDollarSign },
   { label: "Konfigurasi", to: "/admin/konfigurasi", icon: Settings },
 ];
@@ -45,7 +45,7 @@ const employeeNav: Array<{ label: string; to: string; icon: Icon }> = [
   { label: "Pengajuan", to: "/employee/pengajuan", icon: FileCheck2 },
   { label: "Workspace", to: "/employee/workspace", icon: BookOpenCheck },
   { label: "Riwayat", to: "/employee/riwayat", icon: CalendarDays },
-  { label: "Tracking", to: "/employee/tracking", icon: MapPinned },
+  { label: "Kontrak", to: "/employee/kontrak", icon: FileText },
   { label: "Slip gaji", to: "/employee/slip-gaji", icon: WalletCards },
   { label: "Profil", to: "/employee/profil", icon: Users },
 ];

@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "reka-alur-hris-files",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-30",
+  "observability": { "enabled": true },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "reka-alur-hris",
+    "ALLOWED_ORIGINS": "https://reka-alur-hris.web.app,http://localhost:5173"
+  },
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "reka-alur-hris-files" }
+  ]
+}

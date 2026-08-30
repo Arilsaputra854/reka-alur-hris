@@ -195,5 +195,31 @@ export interface Candidate {
   position: string;
   stage: "applied" | "screening" | "interview" | "offer" | "hired" | "rejected";
   notes: string;
+  phone?: string;
+  source?: string;
+  experienceYears?: number;
+  expectedSalary?: number;
+  skills?: string[];
+  cvKey?: string;
+  cvName?: string;
+  hiredEmployeeId?: string;
+  updatedAt?: Timestamp;
   createdAt?: Timestamp;
+}
+
+export interface EmployeeContract {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  contractNumber: string;
+  type: "PKWT" | "PKWTT" | "Freelance" | "Internship";
+  startDate: string;
+  endDate?: string;
+  status: "draft" | "active" | "expired" | "terminated";
+  notes?: string;
+  fileKey?: string;
+  fileName?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }

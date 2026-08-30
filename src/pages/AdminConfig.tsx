@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Building2, Clock3, MapPin, Plus, Save, Settings2, ShieldCheck } from "lucide-react";
+import { Building2, Clock3, MapPin, Plus, Save, ShieldCheck } from "lucide-react";
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { PageHeader, SectionCard } from "../Shell";
 import { EmptyState, FormField, FormMessage, Modal, StatusBadge, SubmitButton } from "../components";
@@ -14,7 +14,7 @@ const defaultSettings: CompanySettings = {
   timezone: "Asia/Jakarta",
   attendanceRadius: 150,
   faceVerification: true,
-  geoTracking: true,
+  geoTracking: false,
   payrollCutoffDay: 25,
   requestApprovalLevels: 1,
 };
@@ -96,7 +96,6 @@ export function AdminConfig() {
             <div className="setting-list">
               <label><span><ShieldCheck size={19} /><div><strong>Verifikasi wajah</strong><small>Liveness demo dan pencocokan 1:1 pada perangkat.</small></div></span><input type="checkbox" checked={settings.faceVerification} onChange={(event) => setSettings({ ...settings, faceVerification: event.target.checked })} /></label>
               <label><span><MapPin size={19} /><div><strong>Geofence attendance</strong><small>Bandingkan titik employee dengan lokasi kerja.</small></div></span><input type="checkbox" checked readOnly /></label>
-              <label><span><Settings2 size={19} /><div><strong>Geo tracking sesi</strong><small>Employee memulai dan menghentikan secara transparan.</small></div></span><input type="checkbox" checked={settings.geoTracking} onChange={(event) => setSettings({ ...settings, geoTracking: event.target.checked })} /></label>
             </div>
             <FormField label="Radius default (meter)"><input type="number" min="25" max="5000" value={settings.attendanceRadius} onChange={(event) => setSettings({ ...settings, attendanceRadius: Number(event.target.value) })} /></FormField>
           </SectionCard>

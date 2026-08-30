@@ -6,18 +6,19 @@ import { LoginPage } from "./pages/LoginPage";
 import { AdminOverview } from "./pages/AdminOverview";
 import { AdminEmployees } from "./pages/AdminEmployees";
 import { AdminAttendance } from "./pages/AdminAttendance";
-import { AdminTracking } from "./pages/AdminTracking";
 import { AdminPayroll } from "./pages/AdminPayroll";
 import { AdminConfig } from "./pages/AdminConfig";
 import { EmployeeHome } from "./pages/EmployeeHome";
 import { EmployeeHistory } from "./pages/EmployeeHistory";
-import { EmployeeTracking } from "./pages/EmployeeTracking";
 import { EmployeePayslips } from "./pages/EmployeePayslips";
 import { EmployeeProfile } from "./pages/EmployeeProfile";
 import { AdminRequests } from "./pages/AdminRequests";
 import { EmployeeRequests } from "./pages/EmployeeRequests";
 import { AdminPeopleOps } from "./pages/AdminPeopleOps";
 import { EmployeeWorkspace } from "./pages/EmployeeWorkspace";
+import { AdminRecruitment } from "./pages/AdminRecruitment";
+import { AdminContracts } from "./pages/AdminContracts";
+import { EmployeeContracts } from "./pages/EmployeeContracts";
 import type { Role } from "./types";
 
 function Protected({ role, children }: { role: Role; children: React.ReactNode }) {
@@ -49,15 +50,18 @@ export default function App() {
       <Route path="/admin/kehadiran" element={<AdminLayout><AdminAttendance /></AdminLayout>} />
       <Route path="/admin/pengajuan" element={<AdminLayout><AdminRequests /></AdminLayout>} />
       <Route path="/admin/people-ops" element={<AdminLayout><AdminPeopleOps /></AdminLayout>} />
-      <Route path="/admin/tracking" element={<AdminLayout><AdminTracking /></AdminLayout>} />
+      <Route path="/admin/recruitment" element={<AdminLayout><AdminRecruitment /></AdminLayout>} />
+      <Route path="/admin/kontrak" element={<AdminLayout><AdminContracts /></AdminLayout>} />
+      <Route path="/admin/tracking" element={<Navigate to="/admin/kehadiran" replace />} />
       <Route path="/admin/payroll" element={<AdminLayout><AdminPayroll /></AdminLayout>} />
       <Route path="/admin/konfigurasi" element={<AdminLayout><AdminConfig /></AdminLayout>} />
       <Route path="/employee" element={<EmployeeLayout><EmployeeHome /></EmployeeLayout>} />
       <Route path="/employee/riwayat" element={<EmployeeLayout><EmployeeHistory /></EmployeeLayout>} />
       <Route path="/employee/pengajuan" element={<EmployeeLayout><EmployeeRequests /></EmployeeLayout>} />
       <Route path="/employee/workspace" element={<EmployeeLayout><EmployeeWorkspace /></EmployeeLayout>} />
-      <Route path="/employee/tracking" element={<EmployeeLayout><EmployeeTracking /></EmployeeLayout>} />
+      <Route path="/employee/tracking" element={<Navigate to="/employee" replace />} />
       <Route path="/employee/slip-gaji" element={<EmployeeLayout><EmployeePayslips /></EmployeeLayout>} />
+      <Route path="/employee/kontrak" element={<EmployeeLayout><EmployeeContracts /></EmployeeLayout>} />
       <Route path="/employee/profil" element={<EmployeeLayout><EmployeeProfile /></EmployeeLayout>} />
       <Route path="/" element={loading ? <div className="app-loading"><LoaderCircle className="spin" size={24} /></div> : <Navigate to={profile ? (profile.role === "admin" ? "/admin" : "/employee") : "/login"} replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

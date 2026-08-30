@@ -2,6 +2,7 @@ node_modules/
 dist/
 functions/lib/
 .firebase/
+.wrangler/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log

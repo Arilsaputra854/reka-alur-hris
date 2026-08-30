@@ -7,6 +7,7 @@ import { useLiveCollection } from "../data";
 import { db } from "../firebase";
 import { formatCurrency, friendlyError } from "../lib";
 import type { Employee, EmployeeRequest, PayrollRun, Payslip } from "../types";
+import { downloadPayslipPdf } from "../payslipPdf";
 
 export function AdminPayroll() {
   const { data: employees } = useLiveCollection<Employee>("employees");
@@ -18,6 +19,7 @@ export function AdminPayroll() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
+  const [selectedSlip, setSelectedSlip] = useState<Payslip | null>(null);
 
   const sorted = useMemo(() => [...runs].sort((a, b) => b.period.localeCompare(a.period)), [runs]);
   const publishedTotal = runs.filter((item) => item.status === "published").reduce((sum, item) => sum + item.totalNet, 0);
@@ -132,8 +134,9 @@ export function AdminPayroll() {
         </form>
       </Modal>
       <Modal open={Boolean(selectedRun)} title={selectedRun ? `Review payroll ${selectedRun.period}` : "Review payroll"} description="Periksa rincian setiap karyawan sebelum slip dipublikasikan." onClose={() => setSelectedRun(null)}>
-        <div className="payroll-review"><div className="table-wrap"><table><thead><tr><th>Karyawan</th><th>Bruto</th><th>BPJS</th><th>PPh 21</th><th>THP</th></tr></thead><tbody>{payslips.filter((item) => item.payrollRunId === selectedRun?.id).map((item) => <tr key={item.id}><td><strong>{item.employeeName}</strong><small>{item.overtime ? `Lembur ${formatCurrency(item.overtime)}` : ""}{item.reimbursement ? ` • Reimburse ${formatCurrency(item.reimbursement)}` : ""}</small></td><td>{formatCurrency(item.gross)}</td><td>{formatCurrency((item.bpjsHealth || 0) + (item.bpjsEmployment || 0))}</td><td>{formatCurrency(item.incomeTax || 0)}</td><td><strong>{formatCurrency(item.net)}</strong></td></tr>)}</tbody></table></div><div className="modal-actions"><button className="button button-secondary" onClick={() => setSelectedRun(null)}>Tutup</button>{selectedRun?.status === "review" && <button className="button button-primary" onClick={() => void publishRun(selectedRun).then(() => setSelectedRun(null))}><Send size={16} /> Publish semua slip</button>}</div></div>
+        <div className="payroll-review"><div className="table-wrap"><table><thead><tr><th>Karyawan</th><th>Bruto</th><th>BPJS</th><th>PPh 21</th><th>THP</th><th /></tr></thead><tbody>{payslips.filter((item) => item.payrollRunId === selectedRun?.id).map((item) => <tr key={item.id}><td><strong>{item.employeeName}</strong><small>{item.overtime ? `Lembur ${formatCurrency(item.overtime)}` : ""}{item.reimbursement ? ` • Reimburse ${formatCurrency(item.reimbursement)}` : ""}</small></td><td>{formatCurrency(item.gross)}</td><td>{formatCurrency((item.bpjsHealth || 0) + (item.bpjsEmployment || 0))}</td><td>{formatCurrency(item.incomeTax || 0)}</td><td><strong>{formatCurrency(item.net)}</strong></td><td><button className="attachment-link" onClick={()=>setSelectedSlip(item)}><Eye size={14}/> Preview</button></td></tr>)}</tbody></table></div><div className="modal-actions"><button className="button button-secondary" onClick={() => setSelectedRun(null)}>Tutup</button>{selectedRun?.status === "review" && <button className="button button-primary" onClick={() => void publishRun(selectedRun).then(() => setSelectedRun(null))}><Send size={16} /> Publish semua slip</button>}</div></div>
       </Modal>
+      <Modal open={Boolean(selectedSlip)} title={selectedSlip ? `Slip ${selectedSlip.employeeName}` : "Preview slip"} description={selectedSlip ? `Periode ${selectedSlip.period} • ${selectedSlip.employeeCode}` : ""} onClose={()=>setSelectedSlip(null)}>{selectedSlip&&<div className="payroll-slip-preview"><div><span>Penghasilan bruto</span><strong>{formatCurrency(selectedSlip.gross)}</strong></div><div><span>Total potongan</span><strong>{formatCurrency(selectedSlip.deduction)}</strong></div><div className="net"><span>Take home pay</span><strong>{formatCurrency(selectedSlip.net)}</strong></div><div className="modal-actions"><button className="button button-secondary" onClick={()=>setSelectedSlip(null)}>Tutup</button><button className="button button-primary" onClick={()=>void downloadPayslipPdf(selectedSlip)}><FileText size={16}/> Unduh PDF</button></div></div>}</Modal>
       <span className="sr-only">{payslips.length} slip tersedia</span>
     </>
   );

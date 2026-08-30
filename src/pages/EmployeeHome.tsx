@@ -70,7 +70,7 @@ export function EmployeeHome() {
           </div>
         </SectionCard>
         <SectionCard title="Catatan penting" description="Transparansi penggunaan data">
-          <div className="privacy-list"><p><ShieldCheck size={17} /><span><strong>Wajah diproses untuk verifikasi 1:1</strong><small>Bukan pencarian wajah massal.</small></span></p><p><Navigation size={17} /><span><strong>Tracking tidak berjalan otomatis</strong><small>Kamu harus memulai sesi secara eksplisit.</small></span></p><p><LocateFixed size={17} /><span><strong>Tidak ada lokasi latar tersembunyi</strong><small>Status selalu terlihat saat tracking aktif.</small></span></p></div>
+          <div className="privacy-list"><p><ShieldCheck size={17} /><span><strong>Wajah diproses untuk verifikasi 1:1</strong><small>Bukan pencarian wajah massal.</small></span></p><p><Navigation size={17} /><span><strong>Lokasi hanya saat absensi</strong><small>Satu titik diminta setelah tombol check-in atau check-out ditekan.</small></span></p><p><LocateFixed size={17} /><span><strong>Tidak ada pelacakan latar</strong><small>GPS tidak dipantau setelah proses absensi selesai.</small></span></p></div>
         </SectionCard>
       </div>
 
