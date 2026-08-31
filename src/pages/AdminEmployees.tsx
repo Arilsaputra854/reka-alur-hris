@@ -204,7 +204,7 @@ export function AdminEmployees() {
 }
 
 function EditEmployeeModal({ employee, onClose, onToggleStatus }: { employee: Employee; onClose: () => void; onToggleStatus: () => void }) {
-  const passwordBackendEnabled = import.meta.env.VITE_ADMIN_PASSWORD_ENABLED === "true";
+  const passwordBackendEnabled = import.meta.env.VITE_ADMIN_PASSWORD_ENABLED !== "false";
   const [form, setForm] = useState({
     fullName: employee.fullName,
     phone: employee.phone || "",
