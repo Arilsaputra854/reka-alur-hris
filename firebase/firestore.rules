@@ -33,8 +33,13 @@ service cloud.firestore {
     match /employees/{employeeId} {
       allow read: if isAdmin() || owns(employeeId);
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (owns(employeeId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'emergencyContact', 'updatedAt']));
+      allow update: if isAdmin() || (owns(employeeId) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'emergencyContact', 'updatedAt'])
+        || (resource.data.faceEnrolled == false
+          && request.resource.data.faceEnrolled == true
+          && request.resource.data.faceEnrollmentMode == 'demo-local'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['faceEnrolled', 'faceEnrollmentMode', 'faceEnrolledAt']))
+      ));
     }
 
     match /settings/{documentId} {

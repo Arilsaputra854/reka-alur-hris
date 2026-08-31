@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Check, Clock3, Fingerprint, LoaderCircle, LocateFixed, MapPin, Navigation, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
-import { addDoc, collection, doc, getDoc, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, orderBy, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { PageHeader, SectionCard } from "../Shell";
 import { FormMessage, Modal, StatusBadge } from "../components";
 import { useAuth } from "../auth";
@@ -227,7 +227,8 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
       const late = type === "check-in" && currentMinutes > shiftHour * 60 + shiftMinute + 10;
       const outside = Boolean(location) && distance > radius;
       const status: AttendanceRecord["status"] = !location ? "review" : outside ? "outside" : late ? "late" : "valid";
-      await addDoc(collection(db, "attendance"), {
+      const batch = writeBatch(db);
+      batch.set(doc(collection(db, "attendance")), {
         employeeId: employee.id,
         employeeName: employee.fullName,
         type,
@@ -243,7 +244,8 @@ function AttendanceCapture({ open, onClose, employee, type }: { open: boolean; o
         status,
         createdAt: serverTimestamp(),
       });
-      if (!employee.faceEnrolled) await updateDoc(doc(db, "employees", employee.id), { faceEnrolled: true, faceEnrollmentMode: "demo-local", faceEnrolledAt: serverTimestamp() });
+      if (!employee.faceEnrolled) batch.update(doc(db, "employees", employee.id), { faceEnrolled: true, faceEnrollmentMode: "demo-local", faceEnrolledAt: serverTimestamp() });
+      await batch.commit();
       setStep("success");
     } catch (submitError) {
       setError(friendlyError(submitError));
